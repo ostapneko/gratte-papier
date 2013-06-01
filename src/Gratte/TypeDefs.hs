@@ -2,13 +2,7 @@ module Gratte.TypeDefs (
   module Gratte.TypeDefs
 ) where
 
-data Options = Options {
-    verbose         :: Bool
-  , silent          :: Bool
-}
+newtype EsHost = EsHost String
+newtype Prefix = Prefix String
 
-defaultOptions :: Options
-defaultOptions = Options {
-    verbose         = False
-  , silent          = False
-}
+data Mode = AddMode | QueryMode
