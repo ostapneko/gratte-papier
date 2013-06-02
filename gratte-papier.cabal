@@ -23,4 +23,5 @@ executable gratte-papier
                      temporary,
                      unix,
                      process,
-                     old-time
+                     old-time,
+                     MissingH

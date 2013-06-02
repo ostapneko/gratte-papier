@@ -21,17 +21,13 @@ newtype Tag    = Tag String
 instance ToJSON Tag where
   toJSON (Tag t) = toJSON $ pack t
 
-newtype Timestamp    = Timestamp String
-instance ToJSON Timestamp where
-  toJSON (Timestamp t) = toJSON $ pack t
-
 data Mode = AddMode | QueryMode
 
 data Document = Document {
-    timestamp :: Timestamp
-  , filepath  :: FilePath
-  , tags      :: [Tag]
-  , freeText  :: Text
+    hash     :: Hash
+  , filepath :: FilePath
+  , tags     :: [Tag]
+  , freeText :: Text
   }
 instance ToJSON Document where
   toJSON (Document _ fp ts ft) =
@@ -46,7 +42,7 @@ newtype BulkEntry = BulkEntry Document
 toByteString :: BulkEntry -> BS.ByteString
 toByteString (BulkEntry doc) = BS.unlines [header, docJSON]
    where header = "{ \"index\": { \"_index\" : \"gratte\", \"_type\" : \"document\", \"_id\" : \""
-                  <> BS.pack docTime
+                  <> BS.pack docHash
                   <> "\" } }"
-         docJSON           = encode . toJSON $ doc
-         Timestamp docTime = timestamp doc
+         docJSON      = encode . toJSON $ doc
+         Hash docHash = hash doc

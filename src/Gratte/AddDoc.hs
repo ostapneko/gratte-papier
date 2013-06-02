@@ -14,6 +14,7 @@ import System.Time
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as TIO
+import           Data.Hash.MD5
 
 import qualified Gratte.Options             as Opt
 import qualified Gratte.TypeDefs            as G
@@ -41,22 +42,23 @@ metadataToDoc :: Opt.Options -> [G.Tag] -> FilePath -> IO G.Document
 metadataToDoc opts tags file = do
   let folder = Opt.folder opts
   let prf    = Opt.prefix opts
-  time       <- getTimestamp
-  let fp     = toNestedFilePath folder time prf file
+  hash       <- getHash
+  let fp     = toNestedFilePath folder hash prf file
   freeText   <- case Opt.ocr opts of
                   True  -> extractText file
                   False -> return T.empty
   return $ G.Document {
-      G.timestamp = G.Timestamp time
+      G.hash      = G.Hash hash
     , G.filepath  = fp
     , G.tags      = tags
     , G.freeText  = freeText
     }
 
-getTimestamp :: IO String
-getTimestamp = do
+getHash :: IO String
+getHash = do
   TOD s ps <- getClockTime
-  return $ show (s * 1000000000000 + ps)
+  let timeStamp = show (s * 1000000000000 + ps)
+  return $ md5s $ Str timeStamp
 
 toNestedFilePath :: FilePath
                  -> String
