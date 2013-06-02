@@ -25,4 +25,5 @@ executable gratte-papier
                      process,
                      old-time,
                      MissingH,
-                     HTTP
+                     HTTP,
+                     vector
