@@ -11,13 +11,14 @@ import System.IO.Temp
 import System.Exit
 import System.Time
 
-import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.Text                  as T
-import qualified Data.Text.IO               as TIO
+import Network.HTTP
+
+import qualified Data.Text       as T
+import qualified Data.Text.IO    as TIO
 import           Data.Hash.MD5
 
-import qualified Gratte.Options             as Opt
-import qualified Gratte.TypeDefs            as G
+import qualified Gratte.Options  as Opt
+import qualified Gratte.TypeDefs as G
 
 addDocuments :: Opt.Options -> [G.Tag] -> [FilePath] -> IO ()
 addDocuments opts tags files = do
@@ -30,13 +31,14 @@ processFile :: FilePath -> Opt.Options -> [G.Tag] -> IO ()
 processFile file opts tags = do
   --create doc
   doc <- metadataToDoc opts tags file
-  -- output JSON
-  BS.putStrLn $ G.toByteString . G.BulkEntry $ doc
-  -- copy file
   unless (Opt.dryRun opts) $ do
-    let newFile = G.filepath doc
-    createDirectoryIfMissing True $ takeDirectory newFile
-    copyFile file newFile
+    -- copy file
+    copyToRepo file doc
+  case Opt.dryRun opts of
+    -- send to ElasticSearch
+    False -> sendToES opts doc
+    -- output JSON
+    True  -> putStrLn $ G.toPayload doc
 
 metadataToDoc :: Opt.Options -> [G.Tag] -> FilePath -> IO G.Document
 metadataToDoc opts tags file = do
@@ -85,3 +87,21 @@ extractText file = do
         rawText <- TIO.readFile (path ++ ".txt")
         return $ T.filter (`elem` ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ [' ']) rawText
       ExitFailure _ -> return T.empty
+
+copyToRepo :: FilePath -> G.Document -> IO ()
+copyToRepo file doc = do
+  let newFile = G.filepath doc
+  let dir = takeDirectory newFile
+  createDirectoryIfMissing True dir
+  copyFile file newFile
+  forM_ (G.tags doc) $ \(G.Tag t) -> do
+    appendFile (dir ++ "/tags") (t ++ "\n")
+
+sendToES :: Opt.Options -> G.Document -> IO ()
+sendToES opts doc = do
+  let (G.EsHost esHost) = Opt.esHost opts
+  let (G.Hash docId)    = G.hash doc
+  let url = esHost ++ "/gratte/document/" ++ docId
+  let payload = G.toPayload doc
+  _ <- simpleHTTP $ postRequestWithBody url "application/json" payload
+  return ()

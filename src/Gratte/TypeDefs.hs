@@ -4,11 +4,9 @@ module Gratte.TypeDefs (
   module Gratte.TypeDefs
 ) where
 
-import           Data.Monoid
 import           Data.Text (Text, pack)
 import           Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BS
-
 
 newtype EsHost = EsHost String
 newtype Prefix = Prefix String
@@ -37,12 +35,5 @@ instance ToJSON Document where
       , "free_text" .= String ft
       ]
 
-newtype BulkEntry = BulkEntry Document
-
-toByteString :: BulkEntry -> BS.ByteString
-toByteString (BulkEntry doc) = BS.unlines [header, docJSON]
-   where header = "{ \"index\": { \"_index\" : \"gratte\", \"_type\" : \"document\", \"_id\" : \""
-                  <> BS.pack docHash
-                  <> "\" } }"
-         docJSON      = encode . toJSON $ doc
-         Hash docHash = hash doc
+toPayload :: Document -> String
+toPayload = BS.unpack . encode . toJSON

@@ -24,4 +24,5 @@ executable gratte-papier
                      unix,
                      process,
                      old-time,
-                     MissingH
+                     MissingH,
+                     HTTP
