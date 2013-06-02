@@ -14,4 +14,13 @@ executable gratte-papier
   main-is:           Gratte.hs
   hs-source-dirs:    src
   ghc-options:       -Wall -Werror
-  build-depends:     base ==4.6.*
+  build-depends:     base ==4.6.*,
+                     aeson,
+                     text,
+                     bytestring,
+                     filepath,
+                     directory,
+                     temporary,
+                     unix,
+                     process,
+                     old-time

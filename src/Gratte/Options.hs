@@ -6,6 +6,7 @@ import System.IO
 import System.Console.GetOpt
 import System.Exit
 import System.Environment
+import System.Directory
 
 import Gratte.TypeDefs
 
@@ -18,14 +19,17 @@ data Options = Options {
   , folder  :: FilePath
 }
 
-defaultOptions :: Options
-defaultOptions = Options {
+defaultOptions :: IO Options
+defaultOptions = do
+  homeDir <- getHomeDirectory
+  let defaultFolder = homeDir ++ "/.gratte"
+  return Options {
     verbose = False
   , silent  = False
   , mode    = QueryMode
   , esHost  = EsHost "http://localhost:9200"
   , prefix  = Prefix "doc"
-  , folder  = "/home/.gratte"
+  , folder  = defaultFolder
 }
 
 options :: [OptDescr (Options -> IO Options)]
