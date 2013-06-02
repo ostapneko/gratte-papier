@@ -4,8 +4,6 @@ module Gratte.AddDoc (
 
 import Control.Monad
 
-
-import System.IO
 import System.FilePath
 import System.Directory
 import System.Process
@@ -22,19 +20,22 @@ import qualified Gratte.TypeDefs            as G
 
 addDocuments :: Opt.Options -> [G.Tag] -> [FilePath] -> IO ()
 addDocuments opts tags files = do
-  unless (Opt.silent opts) (hPutStrLn stderr $ "Sending files to ElasticSearch ...")
   forM_ files $ \file -> do
     fileIsNotDir <- doesFileExist file
     when fileIsNotDir $ do
-      --create doc
-      doc <- metadataToDoc opts tags file
-      -- output JSON
-      BS.putStrLn $ G.toByteString . G.BulkEntry $ doc
-      -- copy file
-      let newFile = G.filepath doc
-      createDirectoryIfMissing True $ takeDirectory newFile
-      copyFile file newFile
-  unless (Opt.silent opts) (hPutStrLn stderr $ "Files sent ElasticSearch")
+      processFile file opts tags
+
+processFile :: FilePath -> Opt.Options -> [G.Tag] -> IO ()
+processFile file opts tags = do
+  --create doc
+  doc <- metadataToDoc opts tags file
+  -- output JSON
+  BS.putStrLn $ G.toByteString . G.BulkEntry $ doc
+  -- copy file
+  unless (Opt.dryRun opts) $ do
+    let newFile = G.filepath doc
+    createDirectoryIfMissing True $ takeDirectory newFile
+    copyFile file newFile
 
 metadataToDoc :: Opt.Options -> [G.Tag] -> FilePath -> IO G.Document
 metadataToDoc opts tags file = do
@@ -42,7 +43,9 @@ metadataToDoc opts tags file = do
   let prf    = Opt.prefix opts
   time       <- getTimestamp
   let fp     = toNestedFilePath folder time prf file
-  freeText   <- extractText file
+  freeText   <- case Opt.ocr opts of
+                  True  -> extractText file
+                  False -> return T.empty
   return $ G.Document {
       G.timestamp = G.Timestamp time
     , G.filepath  = fp

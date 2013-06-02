@@ -17,6 +17,8 @@ data Options = Options {
   , esHost  :: EsHost
   , prefix  :: Prefix
   , folder  :: FilePath
+  , dryRun  :: Bool
+  , ocr     :: Bool
 }
 
 defaultOptions :: IO Options
@@ -30,6 +32,8 @@ defaultOptions = do
   , esHost  = EsHost "http://localhost:9200"
   , prefix  = Prefix "doc"
   , folder  = defaultFolder
+  , dryRun  = False
+  , ocr     = False
 }
 
 options :: [OptDescr (Options -> IO Options)]
@@ -60,6 +64,14 @@ options = [
     , Option "f" ["folder"]
              (ReqArg (\arg opts -> return opts { folder = arg }) "OUTPUT FOLDER")
              "The output folder. Defaults to ~/.gratte"
+
+    , Option "d" ["dry-run"]
+             (NoArg (\opts -> return opts { dryRun = True }))
+             "Run in dry mode: no files are copied and the payloads that would have been sent to ES are displayed to stdout"
+
+    , Option "o" ["ocr"]
+             (NoArg (\opts -> return opts { ocr = True }))
+             "Uses OCR to try extract the text from the documents and add it as searchable metadata. Requires tesseract to be installed."
   ]
 
 usage :: IO ()
