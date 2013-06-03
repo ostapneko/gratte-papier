@@ -85,8 +85,16 @@ extractText file = do
     case exitCode of
       ExitSuccess   -> do
         rawText <- TIO.readFile (path ++ ".txt")
-        return $ T.filter (`elem` ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ [' ']) rawText
+        return $ T.map removeStrangeChars rawText
       ExitFailure _ -> return T.empty
+
+removeStrangeChars :: Char -> Char
+removeStrangeChars c =
+  case c `elem` alpha of
+      True  -> c
+      False -> ' '
+    where alpha = ['a'..'z'] ++ ['A'..'Z'] ++
+                  ['0'..'9'] ++ "ÉÈÊÀÂÎÔéèêàâîô."
 
 copyToRepo :: FilePath -> G.Document -> IO ()
 copyToRepo file doc = do
