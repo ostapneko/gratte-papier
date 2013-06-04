@@ -8,6 +8,8 @@ import System.Exit
 import System.Environment
 import System.Directory
 
+import Data.Char
+
 import Gratte.TypeDefs
 
 data Options = Options {
@@ -49,13 +51,16 @@ options = [
     , Option "h" ["help"]
              (NoArg (\_ -> usage >> exitWith ExitSuccess))
              "Show help"
+
     , Option "e" ["es-host"]
              (ReqArg (\arg opts -> return opts { esHost = EsHost arg }) "HOST")
              "Elastic search host and port, defaults to http://localhost:9200"
 
-    , Option "a" ["add-mode"]
-             (NoArg (\opts -> return opts { mode = AddMode }))
-             "Specify that Gratte is to be used in add mode. Filepaths are taken from stdin"
+    , Option "m" ["mode"]
+             (ReqArg (\arg opts -> return opts { mode = getMode arg }) "query|add|reindex")
+             ("In query mode (default), find the docs which match the args\n" ++
+             "In add mode, add the docs taken in stdin, and tag them with the args\n" ++
+             "In reindex mode, delete ES index and reingest the files in the gratte folder into ES")
 
     , Option "p" ["prefix"]
              (ReqArg (\arg opts -> return opts { prefix = Prefix arg }) "PREFIX")
@@ -73,6 +78,12 @@ options = [
              (NoArg (\opts -> return opts { ocr = True }))
              "Uses OCR to try extract the text from the documents and add it as searchable metadata. Requires tesseract to be installed."
   ]
+
+getMode :: String -> Mode
+getMode m = case map toLower m of
+              "add"     -> AddMode
+              "reindex" -> ReindexMode
+              _         -> QueryMode
 
 usage :: IO ()
 usage = do

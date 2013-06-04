@@ -28,7 +28,7 @@ instance FromJSON Tag where
   parseJSON (String t) = return $ Tag $ T.unpack t
   parseJSON _          = mzero
 
-data Mode = AddMode | QueryMode
+data Mode = AddMode | QueryMode | ReindexMode
 
 data Document = Document {
     hash     :: Hash

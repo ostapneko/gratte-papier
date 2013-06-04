@@ -17,6 +17,7 @@ main = do
               files <- liftM lines getContents
               let tags = map G.Tag args
               AddDoc.addDocuments opts tags files
+            G.ReindexMode -> putStrLn "TODO"
             G.QueryMode -> SearchDocs.searchDocs opts (unwords args)
     _ -> mapM_ putStr errors
 
