@@ -1,4 +1,4 @@
-module Gratte.AddDoc (
+module Gratte.Add (
   addDocuments
   ) where
 

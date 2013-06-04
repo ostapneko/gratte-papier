@@ -1,4 +1,4 @@
-module Gratte.SearchDocs (
+module Gratte.Search (
   searchDocs
   ) where
 
