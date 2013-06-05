@@ -25,7 +25,7 @@ import           Gratte.Logger
 
 addDocuments :: Opt.Options -> [G.Tag] -> [FilePath] -> IO ()
 addDocuments opts tags files = do
-  logAddFiles opts files
+  logAddFiles opts tags files
 
   forM_ files $ \file -> do
     fileIsNotDir <- doesFileExist file
@@ -34,16 +34,13 @@ addDocuments opts tags files = do
 
 processFile :: FilePath -> Opt.Options -> [G.Tag] -> IO ()
 processFile file opts tags = do
+  logMsg opts DEBUG $ "Processing file '" ++ file ++ "' ..."
   --create doc
   doc <- metadataToDoc opts tags file
-  unless (Opt.dryRun opts) $ do
-    -- copy file
-    copyToRepo file doc
-  case Opt.dryRun opts of
-    -- send to ElasticSearch
-    False -> sendToES opts doc
-    -- output JSON
-    True  -> putStrLn $ G.toPayload doc
+  -- copy file
+  copyToRepo opts file doc
+  -- send to ElasticSearch
+  sendToES opts doc
 
 metadataToDoc :: Opt.Options -> [G.Tag] -> FilePath -> IO G.Document
 metadataToDoc opts tags file = do
@@ -101,10 +98,12 @@ removeStrangeChars c =
     where alpha = ['a'..'z'] ++ ['A'..'Z'] ++
                   ['0'..'9'] ++ "ÉÈÊÀÂÎÔéèêàâîô."
 
-copyToRepo :: FilePath -> G.Document -> IO ()
-copyToRepo file doc = do
+copyToRepo :: Opt.Options -> FilePath -> G.Document -> IO ()
+copyToRepo opts file doc = do
   let newFile = G.filepath doc
   let dir = takeDirectory newFile
+  logMsg opts DEBUG $ "\tCopy " ++ file ++ " to " ++ newFile
+  guard (Opt.dryRun opts)
   createDirectoryIfMissing True dir
   copyFile file newFile
   forM_ (G.tags doc) $ \(G.Tag t) -> do
@@ -116,11 +115,15 @@ sendToES opts doc = do
   let (G.Hash docId)    = G.hash doc
   let url = esHost ++ "/gratte/document/" ++ docId
   let payload = G.toPayload doc
+  logMsg opts DEBUG $ "\tSending payload: " ++ G.toPayload doc
+  guard (Opt.dryRun opts)
   _ <- simpleHTTP $ postRequestWithBody url "application/json" payload
   return ()
 
-logAddFiles :: Opt.Options -> [FilePath] -> IO ()
-logAddFiles opts files = do
+logAddFiles :: Opt.Options -> [G.Tag] -> [FilePath] -> IO ()
+logAddFiles opts tags files = do
   logMsg opts DEBUG $ "Adding files \n\t"
                    ++ L.intercalate "\n\t" files
+                   ++ "\nwith tags \n\t"
+                   ++ L.intercalate "\n\t" (map G.toText tags)
                    ++ "\nStarting..."

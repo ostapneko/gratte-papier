@@ -22,6 +22,7 @@ main = do
             G.ReindexMode -> Reindex.reindex opts
             G.QueryMode   -> Search.searchDocs opts (unwords args)
     _ -> mapM_ (logMsg opts CRITICAL) errors
+  removeAllHandlers
 
 processArgs :: IO ([String], Opt.Options, [String])
 processArgs = do
