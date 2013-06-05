@@ -10,18 +10,23 @@ import System.Process
 import System.IO.Temp
 import System.Exit
 import System.Time
+import System.Log.Logger
 
 import Network.HTTP
 
-import qualified Data.Text       as T
-import qualified Data.Text.IO    as TIO
+import qualified Data.List     as L
+import qualified Data.Text     as T
+import qualified Data.Text.IO  as TIO
 import           Data.Hash.MD5
 
 import qualified Gratte.Options  as Opt
 import qualified Gratte.TypeDefs as G
+import           Gratte.Logger
 
 addDocuments :: Opt.Options -> [G.Tag] -> [FilePath] -> IO ()
 addDocuments opts tags files = do
+  logAddFiles opts files
+
   forM_ files $ \file -> do
     fileIsNotDir <- doesFileExist file
     when fileIsNotDir $ do
@@ -113,3 +118,9 @@ sendToES opts doc = do
   let payload = G.toPayload doc
   _ <- simpleHTTP $ postRequestWithBody url "application/json" payload
   return ()
+
+logAddFiles :: Opt.Options -> [FilePath] -> IO ()
+logAddFiles opts files = do
+  logMsg opts DEBUG $ "Adding files \n\t"
+                   ++ L.intercalate "\n\t" files
+                   ++ "\nStarting..."
