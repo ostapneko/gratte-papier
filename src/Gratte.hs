@@ -2,8 +2,6 @@ import Control.Monad
 
 import System.Console.GetOpt
 import System.Environment
-import System.Log.Logger
-import System.Log.Handler.Simple
 
 import qualified Gratte.Options  as Opt
 import qualified Gratte.TypeDefs as G
@@ -21,8 +19,7 @@ main = do
             G.AddMode     -> addDocs opts args
             G.ReindexMode -> Reindex.reindex opts
             G.QueryMode   -> Search.searchDocs opts (unwords args)
-    _ -> mapM_ (logMsg opts CRITICAL) errors
-  removeAllHandlers
+    _ -> mapM_ (logMsg CRITICAL) errors
 
 processArgs :: IO ([String], Opt.Options, [String])
 processArgs = do

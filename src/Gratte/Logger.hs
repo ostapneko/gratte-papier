@@ -1,6 +1,7 @@
 module Gratte.Logger (
   configureLogger
   , logMsg
+  , Priority(..)
   ) where
 
 import System.Log.Logger
@@ -13,19 +14,20 @@ import qualified Gratte.Options as Opt
 configureLogger :: Opt.Options -> IO ()
 configureLogger opts = do
   -- Everything is logged to the file
-  logFileHandler <- fileHandler "log.log" DEBUG
+  logFileHandler <- fileHandler "/var/log/gratte/gratte.log" DEBUG
   -- Console logging depends on the verbosity in the options
   consoleHandler <- getConsoleHandler opts
   updateGlobalLogger rootLoggerName $
     (setLevel DEBUG . setHandlers [logFileHandler, consoleHandler])
 
-logMsg :: Opt.Options -> Priority -> String -> IO ()
-logMsg opts p msg = do
+logMsg :: Priority -> String -> IO ()
+logMsg level msg = do
   timeStamp    <- getTimeStamp
-  l            <- getRootLogger
-  let datedMsg = "[" ++ timeStamp ++ "][" ++
-                 show p ++ "] " ++ msg
-  logL l p datedMsg
+  logger       <- getRootLogger
+  let datedMsg = "[" ++ timeStamp  ++ "]" ++
+                 "[" ++ show level ++ "]" ++
+                 " " ++ msg
+  logL logger level datedMsg
 
 getTimeStamp :: IO String
 getTimeStamp = do

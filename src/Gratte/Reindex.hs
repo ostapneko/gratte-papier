@@ -6,12 +6,12 @@ import Network.HTTP
 import Network.URI
 
 import Data.Maybe
-import Data.Char
 
 import System.Directory
 
 import qualified Gratte.Options  as Opt
 import qualified Gratte.TypeDefs as G
+import           Gratte.Logger
 
 reindex :: Opt.Options -> IO ()
 reindex opts = do
@@ -25,14 +25,14 @@ deleteIndex opts = do
   let uri = fromJust $ parseURI url
   result <- simpleHTTP $ mkRequest DELETE uri
   case result of
-    Right (Response (2, _, _) _ _ body) -> putStrLn $ "Index deleted: " ++ body
-    _                                   -> putStrLn "Something went wrong in the index deletion. Is it already deleted?"
+    Right (Response (2, _, _) _ _ body) -> logMsg NOTICE $ "Index deleted: " ++ body
+    _                                   -> logMsg ERROR "Something went wrong in the index deletion. Is it already deleted?"
 
 importDocs :: Opt.Options -> IO ()
 importDocs opts = do
   let folder = Opt.folder opts
   files <- getFilesRecurs folder
-  mapM_ putStrLn files
+  mapM_ (logMsg DEBUG) files
 
 getFilesRecurs :: FilePath -> IO [FilePath]
 getFilesRecurs f = do

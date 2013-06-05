@@ -10,7 +10,6 @@ import System.Process
 import System.IO.Temp
 import System.Exit
 import System.Time
-import System.Log.Logger
 
 import Network.HTTP
 
@@ -25,7 +24,7 @@ import           Gratte.Logger
 
 addDocuments :: Opt.Options -> [G.Tag] -> [FilePath] -> IO ()
 addDocuments opts tags files = do
-  logAddFiles opts tags files
+  logAddFiles tags files
 
   forM_ files $ \file -> do
     fileIsNotDir <- doesFileExist file
@@ -34,7 +33,7 @@ addDocuments opts tags files = do
 
 processFile :: FilePath -> Opt.Options -> [G.Tag] -> IO ()
 processFile file opts tags = do
-  logMsg opts DEBUG $ "Processing file '" ++ file ++ "' ..."
+  logMsg DEBUG $ "Processing file '" ++ file ++ "' ..."
   --create doc
   doc <- metadataToDoc opts tags file
   -- copy file
@@ -102,7 +101,7 @@ copyToRepo :: Opt.Options -> FilePath -> G.Document -> IO ()
 copyToRepo opts file doc = do
   let newFile = G.filepath doc
   let dir = takeDirectory newFile
-  logMsg opts DEBUG $ "\tCopy " ++ file ++ " to " ++ newFile
+  logMsg DEBUG $ "\tCopy " ++ file ++ " to " ++ newFile
   guard (Opt.dryRun opts)
   createDirectoryIfMissing True dir
   copyFile file newFile
@@ -115,15 +114,15 @@ sendToES opts doc = do
   let (G.Hash docId)    = G.hash doc
   let url = esHost ++ "/gratte/document/" ++ docId
   let payload = G.toPayload doc
-  logMsg opts DEBUG $ "\tSending payload: " ++ G.toPayload doc
+  logMsg DEBUG $ "\tSending payload: " ++ G.toPayload doc
   guard (Opt.dryRun opts)
   _ <- simpleHTTP $ postRequestWithBody url "application/json" payload
   return ()
 
-logAddFiles :: Opt.Options -> [G.Tag] -> [FilePath] -> IO ()
-logAddFiles opts tags files = do
-  logMsg opts DEBUG $ "Adding files \n\t"
-                   ++ L.intercalate "\n\t" files
-                   ++ "\nwith tags \n\t"
-                   ++ L.intercalate "\n\t" (map G.toText tags)
-                   ++ "\nStarting..."
+logAddFiles :: [G.Tag] -> [FilePath] -> IO ()
+logAddFiles tags files = do
+  logMsg DEBUG $ "Adding files \n\t"
+               ++ L.intercalate "\n\t" files
+               ++ "\nwith tags \n\t"
+               ++ L.intercalate "\n\t" (map G.toText tags)
+               ++ "\nStarting..."
