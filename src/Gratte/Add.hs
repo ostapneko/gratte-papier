@@ -1,5 +1,7 @@
 module Gratte.Add (
   addDocuments
+  , sendToES
+  , extractText
   ) where
 
 import Control.Monad
@@ -24,12 +26,14 @@ import           Gratte.Logger
 
 addDocuments :: Opt.Options -> [G.Tag] -> [FilePath] -> IO ()
 addDocuments opts tags files = do
-  logAddFiles tags files
+  logStartAddingFiles tags files
 
   forM_ files $ \file -> do
     fileIsNotDir <- doesFileExist file
     when fileIsNotDir $ do
       processFile file opts tags
+
+  logDoneAddingFiles files
 
 processFile :: FilePath -> Opt.Options -> [G.Tag] -> IO ()
 processFile file opts tags = do
@@ -102,11 +106,11 @@ copyToRepo opts file doc = do
   let newFile = G.filepath doc
   let dir = takeDirectory newFile
   logMsg DEBUG $ "\tCopy " ++ file ++ " to " ++ newFile
-  guard (Opt.dryRun opts)
-  createDirectoryIfMissing True dir
-  copyFile file newFile
-  forM_ (G.tags doc) $ \(G.Tag t) -> do
-    appendFile (dir ++ "/tags") (t ++ "\n")
+  unless (Opt.dryRun opts) $ do
+    createDirectoryIfMissing True dir
+    copyFile file newFile
+    forM_ (G.tags doc) $ \(G.Tag t) -> do
+      appendFile (dir ++ "/tags") (t ++ "\n")
 
 sendToES :: Opt.Options -> G.Document -> IO ()
 sendToES opts doc = do
@@ -115,14 +119,18 @@ sendToES opts doc = do
   let url = esHost ++ "/gratte/document/" ++ docId
   let payload = G.toPayload doc
   logMsg DEBUG $ "\tSending payload: " ++ G.toPayload doc
-  guard (Opt.dryRun opts)
-  _ <- simpleHTTP $ postRequestWithBody url "application/json" payload
-  return ()
+  unless (Opt.dryRun opts) $ do
+    _ <- simpleHTTP $ postRequestWithBody url "application/json" payload
+    return ()
 
-logAddFiles :: [G.Tag] -> [FilePath] -> IO ()
-logAddFiles tags files = do
+logStartAddingFiles :: [G.Tag] -> [FilePath] -> IO ()
+logStartAddingFiles tags files = do
   logMsg DEBUG $ "Adding files \n\t"
                ++ L.intercalate "\n\t" files
                ++ "\nwith tags \n\t"
                ++ L.intercalate "\n\t" (map G.toText tags)
-               ++ "\nStarting..."
+  logMsg NOTICE $ "Starting..."
+
+logDoneAddingFiles :: [FilePath] -> IO ()
+logDoneAddingFiles files = logMsg NOTICE $
+  "Done adding " ++ show (length files) ++ " files."

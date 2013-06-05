@@ -1,22 +1,30 @@
 module Gratte.Reindex (
   reindex
+  , getHash
   ) where
+
+import Control.Monad
+
+import           Data.Maybe
+import qualified Data.Text as T
+import           Data.Char
+
+import System.FilePath
+import System.Directory
 
 import Network.HTTP
 import Network.URI
 
-import Data.Maybe
-
-import System.Directory
-
 import qualified Gratte.Options  as Opt
 import qualified Gratte.TypeDefs as G
+import           Gratte.Add      (extractText, sendToES)
 import           Gratte.Logger
+import           Gratte.Utils    (getFilesRecurs)
 
 reindex :: Opt.Options -> IO ()
 reindex opts = do
   deleteIndex opts
-  importDocs opts
+  importFiles opts
 
 deleteIndex :: Opt.Options -> IO ()
 deleteIndex opts = do
@@ -28,26 +36,50 @@ deleteIndex opts = do
     Right (Response (2, _, _) _ _ body) -> logMsg NOTICE $ "Index deleted: " ++ body
     _                                   -> logMsg ERROR "Something went wrong in the index deletion. Is it already deleted?"
 
-importDocs :: Opt.Options -> IO ()
-importDocs opts = do
+importFiles :: Opt.Options -> IO ()
+importFiles opts = do
   let folder = Opt.folder opts
-  files <- getFilesRecurs folder
-  mapM_ (logMsg DEBUG) files
+  logMsg NOTICE $ "Starting file imports from folder: " ++ folder ++ " ..."
+  files <- (filter notTagFile) `liftM` getFilesRecurs folder
+  mapM_ (importFile opts) files
+  logMsg NOTICE $ show (length files) ++ " files imported successfully."
 
-getFilesRecurs :: FilePath -> IO [FilePath]
-getFilesRecurs f = do
-  isFile <- doesFileExist f
-  case isFile of
-    True  -> return [f]
-    False -> do
-      children <- getDirectoryContents' f
-      grandChildren <- mapM getFilesRecurs children
-      return $ concat grandChildren
+notTagFile :: FilePath -> Bool
+notTagFile file = takeBaseName file /= "tags"
 
-getDirectoryContents' :: FilePath -> IO [FilePath]
-getDirectoryContents' f = do
-  dirContents <- getDirectoryContents f
-  let notDotDir = not . all (=='.')
-  let childrenBaseNames = filter notDotDir dirContents
-  let children = zipWith (++) (repeat $ f ++ "/") childrenBaseNames
-  return children
+importFile :: Opt.Options -> FilePath -> IO ()
+importFile opts file = do
+  logMsg DEBUG $ "Importing File " ++ file
+  doc <- createDoc opts file
+  sendToES opts doc
+
+createDoc :: Opt.Options -> FilePath -> IO G.Document
+createDoc opts file = do
+  let hash = getHash file
+  tags     <- getTags file
+  freeText <- case Opt.ocr opts of
+                  True  -> extractText file
+                  False -> return T.empty
+  return $ G.Document {
+      G.hash      = G.Hash hash
+    , G.filepath  = file
+    , G.tags      = tags
+    , G.freeText  = freeText
+    }
+
+-- foo/bar/a/2/3/4/doc-5678 -> a2345678
+getHash :: FilePath -> String
+getHash fp =
+  let (fileName:dirs) = take 4 . reverse . splitDirectories . dropExtension $ fp
+      fileNameNoPrefix = reverse . takeWhile isAlphaNum . reverse $ fileName
+  in  concat $ reverse dirs ++ [fileNameNoPrefix]
+
+getTags :: FilePath -> IO [G.Tag]
+getTags file = do
+  let tagPath = takeDirectory file ++ "/tags"
+  tagFileExists <- doesFileExist tagPath
+  case tagFileExists of
+    True -> do
+      tagFileContent <- readFile tagPath
+      return $ map G.Tag (lines tagFileContent)
+    False -> return []

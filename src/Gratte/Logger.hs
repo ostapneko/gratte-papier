@@ -40,5 +40,5 @@ getConsoleHandler opts = do
   let level = case (Opt.verbose opts, Opt.silent opts) of
                 (True, _)    -> DEBUG
                 (_   , True) -> CRITICAL
-                _            -> WARNING
+                _            -> NOTICE
   streamHandler stderr level
