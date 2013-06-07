@@ -12,8 +12,9 @@ cabal-version:       >=1.8
 
 executable gratte-papier
   ghc-options:       -Wall
-  main-is:           Gratte.hs
-  hs-source-dirs:    src
+  main-is:           Main.hs
+  hs-source-dirs:    src/executable
+                     src/library
   build-depends:     base,
                      aeson,
                      text,
@@ -28,4 +29,5 @@ executable gratte-papier
                      HTTP,
                      vector,
                      network,
-                     hslogger
+                     hslogger,
+                     mtl

@@ -13,14 +13,15 @@ import Data.Char
 import Gratte.TypeDefs
 
 data Options = Options {
-    verbose :: Bool
-  , silent  :: Bool
-  , mode    :: Mode
-  , esHost  :: EsHost
-  , prefix  :: Prefix
-  , folder  :: FilePath
-  , dryRun  :: Bool
-  , ocr     :: Bool
+    verbose     :: Bool
+  , silent      :: Bool
+  , mode        :: Mode
+  , esHost      :: EsHost
+  , prefix      :: Prefix
+  , folder      :: FilePath
+  , dryRun      :: Bool
+  , ocr         :: Bool
+  , logFilePath :: FilePath
 }
 
 defaultOptions :: IO Options
@@ -36,6 +37,7 @@ defaultOptions = do
   , folder  = defaultFolder
   , dryRun  = False
   , ocr     = False
+  , logFilePath = "/var/log/gratte/gratte.log"
 }
 
 options :: [OptDescr (Options -> IO Options)]
@@ -77,6 +79,11 @@ options = [
     , Option "o" ["ocr"]
              (NoArg (\opts -> return opts { ocr = True }))
              "Uses OCR to try extract the text from the documents and add it as searchable metadata. Requires tesseract to be installed."
+
+    , Option "" ["log--file"]
+             (ReqArg (\arg opts -> return opts { logFilePath = arg }) "PATH")
+             "The log file. Defaults to /var/log/gratte/gratte.log"
+
   ]
 
 getMode :: String -> Mode

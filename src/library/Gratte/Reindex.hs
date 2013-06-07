@@ -4,6 +4,8 @@ module Gratte.Reindex (
   ) where
 
 import Control.Monad
+import Control.Monad.Trans
+import Control.Monad.Gratte
 
 import           Data.Maybe
 import qualified Data.Text as T
@@ -15,50 +17,50 @@ import System.Directory
 import Network.HTTP
 import Network.URI
 
-import qualified Gratte.Options  as Opt
+import qualified Gratte.Options  as O
 import qualified Gratte.TypeDefs as G
 import           Gratte.Add      (extractText, sendToES)
-import           Gratte.Logger
 import           Gratte.Utils    (getFilesRecurs)
 
-reindex :: Opt.Options -> IO ()
-reindex opts = do
-  deleteIndex opts
-  importFiles opts
+reindex :: Gratte ()
+reindex = do
+  deleteIndex
+  importFiles
 
-deleteIndex :: Opt.Options -> IO ()
-deleteIndex opts = do
-  let (G.EsHost esHost) = Opt.esHost opts
+deleteIndex :: Gratte ()
+deleteIndex = do
+  G.EsHost esHost <- getOption O.esHost
   let url = esHost ++ "/gratte/document/"
   let uri = fromJust $ parseURI url
-  result <- simpleHTTP $ mkRequest DELETE uri
+  result <- liftIO . simpleHTTP $ mkRequest DELETE uri
   case result of
-    Right (Response (2, _, _) _ _ body) -> logMsg NOTICE $ "Index deleted: " ++ body
-    _                                   -> logMsg ERROR "Something went wrong in the index deletion. Is it already deleted?"
+    Right (Response (2, _, _) _ _ body) -> logNotice $ "Index deleted: " ++ body
+    _                                   -> logError "Something went wrong in the index deletion. Is it already deleted?"
 
-importFiles :: Opt.Options -> IO ()
-importFiles opts = do
-  let folder = Opt.folder opts
-  logMsg NOTICE $ "Starting file imports from folder: " ++ folder ++ " ..."
-  files <- (filter notTagFile) `liftM` getFilesRecurs folder
-  mapM_ (importFile opts) files
-  logMsg NOTICE $ show (length files) ++ " files imported successfully."
+importFiles :: Gratte ()
+importFiles = do
+  folder <- getOption O.folder
+  logNotice $ "Starting file imports from folder: " ++ folder ++ " ..."
+  files <- liftIO $ (filter notTagFile) `liftM` getFilesRecurs folder
+  mapM_ importFile files
+  logNotice $ show (length files) ++ " files imported successfully."
 
 notTagFile :: FilePath -> Bool
 notTagFile file = takeBaseName file /= "tags"
 
-importFile :: Opt.Options -> FilePath -> IO ()
-importFile opts file = do
-  logMsg DEBUG $ "Importing File " ++ file
-  doc <- createDoc opts file
-  sendToES opts doc
+importFile :: FilePath -> Gratte ()
+importFile file = do
+  logDebug $ "Importing File " ++ file
+  doc <- createDoc file
+  sendToES doc
 
-createDoc :: Opt.Options -> FilePath -> IO G.Document
-createDoc opts file = do
+createDoc :: FilePath -> Gratte G.Document
+createDoc file = do
   let hash = getHash file
-  tags     <- getTags file
-  freeText <- case Opt.ocr opts of
-                  True  -> extractText file
+  tags     <- liftIO . getTags $ file
+  useOcr   <- getOption O.ocr
+  freeText <- case useOcr of
+                  True  -> liftIO . extractText $ file
                   False -> return T.empty
   return $ G.Document {
       G.hash      = G.Hash hash
