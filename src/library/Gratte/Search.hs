@@ -16,7 +16,8 @@ import qualified Gratte.TypeDefs as G
 searchDocs :: String -> Gratte ()
 searchDocs queryText = do
   G.EsHost esHost <- getOption O.esHost
-  let url = esHost ++ "/gratte/document/_search?q=" ++ queryText
+  let queryString = "?q=" ++ (urlEncode queryText)
+  let url = esHost ++ "/gratte/document/_search" ++ queryString
   logDebug $ "Querying for '" ++ queryText ++ "'"
   result <- liftIO . simpleHTTP $ getRequest url
 
