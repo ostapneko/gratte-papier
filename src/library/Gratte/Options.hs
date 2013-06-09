@@ -106,7 +106,5 @@ usage :: IO ()
 usage = do
   prg <- getProgName
   let header = "Usage: " ++ prg ++ " [options] [tags]\n\n" ++
-               "In query mode (default), it will output a list of files matching the string given as arguments\n\n" ++
-               "In add mode (with the -a flag), the files given in the stdin will be tagged with the command's arguments\n\n" ++
                "Options:"
   hPutStr stderr $ usageInfo header options
