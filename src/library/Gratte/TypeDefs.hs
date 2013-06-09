@@ -32,6 +32,7 @@ toText :: Tag -> String
 toText (Tag t) = t
 
 data Mode = AddMode | QueryMode | ReindexMode
+data OutputFormat = CompactFormat | DetailedFormat
 
 data Document = Document {
     hash     :: Hash

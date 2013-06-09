@@ -30,4 +30,5 @@ executable gratte-papier
                      vector,
                      network,
                      hslogger,
-                     mtl
+                     mtl,
+                     split

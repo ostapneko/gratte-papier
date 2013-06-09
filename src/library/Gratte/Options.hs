@@ -13,15 +13,16 @@ import Data.Char
 import Gratte.TypeDefs
 
 data Options = Options {
-    verbose     :: Bool
-  , silent      :: Bool
-  , mode        :: Mode
-  , esHost      :: EsHost
-  , prefix      :: Prefix
-  , folder      :: FilePath
-  , dryRun      :: Bool
-  , ocr         :: Bool
-  , logFilePath :: FilePath
+    verbose      :: Bool
+  , silent       :: Bool
+  , mode         :: Mode
+  , esHost       :: EsHost
+  , prefix       :: Prefix
+  , folder       :: FilePath
+  , dryRun       :: Bool
+  , ocr          :: Bool
+  , logFilePath  :: FilePath
+  , outputFormat :: OutputFormat
 }
 
 defaultOptions :: IO Options
@@ -29,15 +30,16 @@ defaultOptions = do
   homeDir <- getHomeDirectory
   let defaultFolder = homeDir ++ "/.gratte"
   return Options {
-    verbose = False
-  , silent  = False
-  , mode    = QueryMode
-  , esHost  = EsHost "http://localhost:9200"
-  , prefix  = Prefix "doc"
-  , folder  = defaultFolder
-  , dryRun  = False
-  , ocr     = False
-  , logFilePath = "/var/log/gratte/gratte.log"
+    verbose      = False
+  , silent       = False
+  , mode         = QueryMode
+  , esHost       = EsHost "http://localhost:9200"
+  , prefix       = Prefix "doc"
+  , folder       = defaultFolder
+  , dryRun       = False
+  , ocr          = False
+  , logFilePath  = "/var/log/gratte/gratte.log"
+  , outputFormat = DetailedFormat
 }
 
 options :: [OptDescr (Options -> IO Options)]
@@ -68,7 +70,7 @@ options = [
              (ReqArg (\arg opts -> return opts { prefix = Prefix arg }) "PREFIX")
              "Prefixes the files with the prefix argument. Defaults to 'doc'"
 
-    , Option "f" ["folder"]
+    , Option "" ["folder"]
              (ReqArg (\arg opts -> return opts { folder = arg }) "OUTPUT FOLDER")
              "The output folder. Defaults to ~/.gratte"
 
@@ -84,6 +86,9 @@ options = [
              (ReqArg (\arg opts -> return opts { logFilePath = arg }) "PATH")
              "The log file. Defaults to /var/log/gratte/gratte.log"
 
+    , Option "f" ["format"]
+             (ReqArg (\arg opts -> return opts { outputFormat = getFormat arg }) "compact|detail")
+             "The output format in query mode. 'compact' will spit the file paths. 'detail' spits results in human-readable format. Defaults to 'detail'."
   ]
 
 getMode :: String -> Mode
@@ -91,6 +96,11 @@ getMode m = case map toLower m of
               "add"     -> AddMode
               "reindex" -> ReindexMode
               _         -> QueryMode
+
+getFormat :: String -> OutputFormat
+getFormat f = case map toLower f of
+                "compact" -> CompactFormat
+                _         -> DetailedFormat
 
 usage :: IO ()
 usage = do
