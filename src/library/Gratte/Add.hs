@@ -7,6 +7,7 @@ module Gratte.Add (
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Gratte
+import Control.Concurrent
 
 import System.FilePath
 import System.Directory
@@ -29,11 +30,16 @@ addDocuments :: [G.Tag] -> [FilePath] -> Gratte ()
 addDocuments tags files = do
   logStartAddingFiles tags files
 
-  forM_ files $ \file -> do
-    fileIsNotDir <- liftIO $ doesFileExist file
-    when fileIsNotDir $ do
-      processFile file tags
+  mvar <- liftIO $ newEmptyMVar
+  existingFiles <- liftIO $ filterM doesFileExist files
+  opts <- getOptions
 
+  liftIO $ forM_ existingFiles $ \file -> forkIO $ do
+    fileIsNotDir <- doesFileExist file
+    when fileIsNotDir $ do
+      gratte (processFile file tags) opts >> putMVar mvar ()
+
+  liftIO $ replicateM_ (length existingFiles) (takeMVar mvar >> return ())
   logDoneAddingFiles files
 
 processFile :: FilePath -> [G.Tag] -> Gratte ()
