@@ -15,20 +15,47 @@ executable gratte-papier
   main-is:           Main.hs
   hs-source-dirs:    src/executable
                      src/library
-  build-depends:     base,
-                     aeson,
-                     text,
-                     bytestring,
-                     filepath,
-                     directory,
-                     temporary,
-                     unix,
-                     process,
-                     old-time,
-                     MissingH,
-                     HTTP,
-                     vector,
-                     network,
-                     hslogger,
-                     mtl,
-                     split
+  build-depends:     base
+                     , aeson
+                     , text
+                     , bytestring
+                     , filepath
+                     , directory
+                     , temporary
+                     , unix
+                     , process
+                     , old-time
+                     , MissingH
+                     , HTTP
+                     , vector
+                     , network
+                     , hslogger
+                     , mtl
+                     , split
+
+test-suite integration
+  type:              exitcode-stdio-1.0
+  main-is:           Suite.hs
+  hs-source-dirs:    tests/integration
+                     , src/library
+
+  build-depends:     base
+                     , aeson
+                     , text
+                     , bytestring
+                     , filepath
+                     , directory
+                     , temporary
+                     , unix
+                     , process
+                     , old-time
+                     , MissingH
+                     , HTTP
+                     , vector
+                     , network
+                     , hslogger
+                     , mtl
+                     , split
+                     , hspec
+                     , HUnit
+                     , temporary

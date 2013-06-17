@@ -11,8 +11,9 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import Control.Applicative
 import Control.Monad
 
-newtype EsHost = EsHost String
-newtype Prefix = Prefix String
+newtype EsHost  = EsHost String
+newtype EsIndex = EsIndex String
+newtype Prefix  = Prefix String
 
 newtype Hash   = Hash String
 instance ToJSON Hash where
@@ -21,7 +22,7 @@ instance FromJSON Hash where
   parseJSON (String h) = return $ Hash $ T.unpack h
   parseJSON _          = mzero
 
-newtype Tag    = Tag String
+newtype Tag = Tag String deriving (Show, Eq)
 instance ToJSON Tag where
   toJSON (Tag t) = toJSON $ T.pack t
 instance FromJSON Tag where

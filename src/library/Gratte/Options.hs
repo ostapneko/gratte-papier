@@ -17,6 +17,7 @@ data Options = Options {
   , silent       :: Bool
   , mode         :: Mode
   , esHost       :: EsHost
+  , esIndex      :: EsIndex
   , prefix       :: Prefix
   , folder       :: FilePath
   , dryRun       :: Bool
@@ -34,6 +35,7 @@ defaultOptions = do
   , silent       = False
   , mode         = QueryMode
   , esHost       = EsHost "http://localhost:9200"
+  , esIndex      = EsIndex "gratte"
   , prefix       = Prefix "doc"
   , folder       = defaultFolder
   , dryRun       = False
@@ -59,6 +61,10 @@ options = [
     , Option "e" ["es-host"]
              (ReqArg (\arg opts -> return opts { esHost = EsHost arg }) "HOST")
              "Elastic search host and port, defaults to http://localhost:9200"
+
+    , Option "" ["es-index"]
+             (ReqArg (\arg opts -> return opts { esIndex = EsIndex arg }) "INDEX")
+             "Elastic search index, defaults to 'gratte'"
 
     , Option "m" ["mode"]
              (ReqArg (\arg opts -> return opts { mode = getMode arg }) "query|add|reindex")

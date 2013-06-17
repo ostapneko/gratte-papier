@@ -83,9 +83,9 @@ toNestedFilePath :: FilePath
 toNestedFilePath folder time (G.Prefix prf) file =
   let ext          = takeExtension file
       (a:b:c:rest) = time
-  in folder ++ "/"
-     ++ [a] ++ "/" ++ [b] ++ "/" ++ [c] ++ "/"
-     ++ prf ++ "-" ++ rest ++ ext
+  in folder
+     </> [a] </> [b] </> [c]
+     </> prf ++ "-" ++ rest ++ ext
 
 extractText :: FilePath -> IO T.Text
 extractText file = do
@@ -119,14 +119,15 @@ copyToRepo file doc = do
     createDirectoryIfMissing True dir
     copyFile file newFile
     forM_ (G.tags doc) $ \(G.Tag t) -> do
-      appendFile (dir ++ "/tags") (t ++ "\n")
+      appendFile (dir </> "tags") (t ++ "\n")
 
 sendToES :: G.Document -> Gratte ()
 sendToES doc = do
   (G.EsHost esHost) <- getOption O.esHost
+  (G.EsIndex esIndex) <- getOption O.esIndex
   isDryRun <- getOption O.dryRun
   let (G.Hash docId) = G.hash doc
-  let url = esHost ++ "/gratte/document/" ++ docId
+  let url = esHost </> esIndex </> "document" </> docId
   let payload = G.toPayload doc
   logDebug $ "\tSending payload: " ++ G.toPayload doc
   unless isDryRun $ do

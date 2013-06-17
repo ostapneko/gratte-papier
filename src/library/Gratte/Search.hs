@@ -1,7 +1,9 @@
 module Gratte.Search (
   searchDocs
+  , getDocs
   ) where
 
+import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Gratte
 import           Control.Arrow
@@ -21,24 +23,33 @@ import Gratte.TypeDefs
 
 searchDocs :: String -> Gratte ()
 searchDocs queryText = do
+  docs <- getDocs queryText
+  mapM_ outputDoc docs
+
+getDocs :: String -> Gratte [Document]
+getDocs queryText = do
   EsHost h <- getOption esHost
+  EsIndex i <- getOption esIndex
   let queryString = "?q=" ++ (urlEncode queryText)
-  let url = h ++ "/gratte/document/_search" ++ queryString
+  let url = h </> i </> "document" </> "_search" ++ queryString
   logDebug $ "Querying for '" ++ queryText ++ "'"
   result <- liftIO . simpleHTTP $ getRequest url
 
   case result of
-    Left err -> logError $ "An error happened when connecting to ES: " ++ show err
-    Right (Response code _ _ body) -> do
-      case code of
-        (2,_,_) -> return ()
-        (x,y,z) -> logError $ "ES failure code returned: " ++ show x ++ show y ++ show z
+    Left err -> logAndReturnEmpty $ "An error happened when connecting to ES: " ++ show err
+    Right (Response (x, y, z) _ _ body) -> do
+      unless (x == 2) $ do
+        logError $ "ES failure code returned: " ++ show x ++ show y ++ show z
       case decode (BS.pack body) of
-        Nothing -> logError $ "Parsing of the results from ES failed"
+        Nothing -> logAndReturnEmpty $ "Parsing of the results from ES failed"
         Just jsonBody -> case fromJSON jsonBody of
-          Error err -> logError $ "JSON object parsing failed: " ++ err
-          Success (SearchResult (Hits docs)) -> do
-            mapM_ outputDoc docs
+          Error err -> logAndReturnEmpty $ "JSON object parsing failed: " ++ err
+          Success (SearchResult (Hits docs)) -> return docs
+
+logAndReturnEmpty :: String -> Gratte [Document]
+logAndReturnEmpty msg = do
+  logError msg
+  return []
 
 outputDoc :: Document -> Gratte ()
 outputDoc doc = do
