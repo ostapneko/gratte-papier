@@ -1,0 +1,7 @@
+- Fix esCleanup in integration test
+- Add reindexing test
+- Tweak search
+- More formatting control
+- Controllable number of results
+- Test for multi-cpu
+- Add a proper README
