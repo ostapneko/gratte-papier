@@ -1,4 +1,3 @@
-- Fix esCleanup in integration test
 - Add reindexing test
 - Tweak search
 - More formatting control
