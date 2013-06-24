@@ -4,3 +4,6 @@
 - Controllable number of results
 - Test for multi-cpu
 - Add a proper README
+- Abscact OCR in an OCR module
+- Invalidate arguments of some pdfs are in the list and no pdf mode is chosen
+- Remove tag file and use a Document dump instead

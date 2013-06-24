@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Gratte.TypeDefs (
-  module Gratte.TypeDefs
-) where
+module Gratte.Document where
 
 import qualified Data.Text                  as T
 import           Data.Aeson
@@ -11,20 +9,27 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import Control.Applicative
 import Control.Monad
 
-newtype EsHost  = EsHost String
-newtype EsIndex = EsIndex String
-newtype Prefix  = Prefix String
+data Document = Document {
+    hash     :: DocumentHash
+  , filepath :: FilePath
+  , tags     :: [Tag]
+  , freeText :: Maybe T.Text
+  }
 
-newtype Hash   = Hash String
-instance ToJSON Hash where
-  toJSON (Hash h) = toJSON $ T.pack h
-instance FromJSON Hash where
-  parseJSON (String h) = return $ Hash $ T.unpack h
+newtype DocumentHash   = DocumentHash String
+
+instance ToJSON DocumentHash where
+  toJSON (DocumentHash h) = toJSON $ T.pack h
+
+instance FromJSON DocumentHash where
+  parseJSON (String h) = return $ DocumentHash $ T.unpack h
   parseJSON _          = mzero
 
 newtype Tag = Tag String deriving (Show, Eq)
+
 instance ToJSON Tag where
   toJSON (Tag t) = toJSON $ T.pack t
+
 instance FromJSON Tag where
   parseJSON (String t) = return $ Tag $ T.unpack t
   parseJSON _          = mzero
@@ -32,22 +37,17 @@ instance FromJSON Tag where
 toText :: Tag -> String
 toText (Tag t) = t
 
-data Mode = AddMode | QueryMode | ReindexMode
-data OutputFormat = CompactFormat | DetailedFormat
-
-data Document = Document {
-    hash     :: Hash
-  , filepath :: FilePath
-  , tags     :: [Tag]
-  , freeText :: T.Text
-  }
 instance ToJSON Document where
   toJSON (Document _ fp ts ft) =
     object [
         "filepath"  .= String (T.pack fp)
       , "tags"      .= toJSON ts
-      , "free_text" .= String ft
+      , "free_text" .= toJSON ft
       ]
+
+toPayload :: Document -> String
+toPayload = BS.unpack . encode . toJSON
+
 instance FromJSON Document where
   parseJSON (Object v) =
     Document <$> v .: "_id"
@@ -55,9 +55,6 @@ instance FromJSON Document where
              <*> (v .: "_source" >>= (.: "tags"))
              <*> (v .: "_source" >>= (.: "free_text"))
   parseJSON _          = mzero
-
-toPayload :: Document -> String
-toPayload = BS.unpack . encode . toJSON
 
 data SearchResult = SearchResult Hits
 instance FromJSON SearchResult where

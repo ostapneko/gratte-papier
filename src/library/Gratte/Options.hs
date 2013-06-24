@@ -10,7 +10,13 @@ import System.Directory
 
 import Data.Char
 
-import Gratte.TypeDefs
+newtype EsHost  = EsHost String
+newtype EsIndex = EsIndex String
+newtype Prefix  = Prefix String
+
+data Mode         = AddMode | QueryMode | ReindexMode
+data PDFMode      = NoPDFMode | ImagePDFMode | TextPDFMode
+data OutputFormat = CompactFormat | DetailedFormat
 
 data Options = Options {
     verbose      :: Bool
@@ -24,6 +30,7 @@ data Options = Options {
   , ocr          :: Bool
   , logFilePath  :: FilePath
   , outputFormat :: OutputFormat
+  , pdfMode      :: PDFMode
 }
 
 defaultOptions :: IO Options
@@ -42,6 +49,7 @@ defaultOptions = do
   , ocr          = False
   , logFilePath  = "/var/log/gratte/gratte.log"
   , outputFormat = DetailedFormat
+  , pdfMode      = NoPDFMode
 }
 
 options :: [OptDescr (Options -> IO Options)]
@@ -67,14 +75,14 @@ options = [
              "Elastic search index, defaults to 'gratte'"
 
     , Option "m" ["mode"]
-             (ReqArg (\arg opts -> return opts { mode = getMode arg }) "query|add|reindex")
+             (ReqArg (\arg opts -> do m <- getMode arg; return opts { mode = m }) "q[uery]|a[dd]|r[eindex]")
              ("In query mode (default), find the docs which match the args\n" ++
              "In add mode, add the docs taken in stdin, and tag them with the args\n" ++
              "In reindex mode, delete ES index and reingest the files in the gratte folder into ES")
 
-    , Option "p" ["prefix"]
-             (ReqArg (\arg opts -> return opts { prefix = Prefix arg }) "PREFIX")
-             "Prefixes the files with the prefix argument. Defaults to 'doc'"
+    , Option "t" ["title"]
+             (ReqArg (\arg opts -> return opts { prefix = Prefix arg }) "TITLE")
+             "Prefixes the files with the title argument. Defaults to 'doc'. Try to use this-kind-of-case."
 
     , Option "" ["folder"]
              (ReqArg (\arg opts -> return opts { folder = arg }) "OUTPUT FOLDER")
@@ -93,20 +101,37 @@ options = [
              "The log file. Defaults to /var/log/gratte/gratte.log"
 
     , Option "f" ["format"]
-             (ReqArg (\arg opts -> return opts { outputFormat = getFormat arg }) "compact|detail")
+             (ReqArg (\arg opts -> do f <- getFormat arg; return opts { outputFormat = f }) "c[ompact]|d[etail]")
              "The output format in query mode. 'compact' will spit the file paths. 'detail' spits results in human-readable format. Defaults to 'detail'."
+    , Option "p" ["pdf-mode"]
+             (ReqArg (\arg opts -> do m <- getPDFMode arg; return opts { pdfMode = m}) "i[mage]|t[text]")
+             "The text recognition mode for PDF files, when used in conjonction with -o. '-p image' will consider the pdf as an image, while '-p text' will treat the PDF as text. This option is mandatory if you are scanning at least one PDF file with OCR."
   ]
 
-getMode :: String -> Mode
-getMode m = case map toLower m of
-              "add"     -> AddMode
-              "reindex" -> ReindexMode
-              _         -> QueryMode
+getMode :: String -> IO Mode
+getMode m
+  | map toLower m `elem` ["add", "a"]     = return AddMode
+  | map toLower m `elem` ["reindex", "r"] = return ReindexMode
+  | map toLower m `elem` ["query", "q"]   = return QueryMode
+  | otherwise = do
+      hPutStr stderr "Allowed value for -m : a[dd], r[eindex], q[uery]"
+      exitFailure
 
-getFormat :: String -> OutputFormat
-getFormat f = case map toLower f of
-                "compact" -> CompactFormat
-                _         -> DetailedFormat
+getFormat :: String -> IO OutputFormat
+getFormat f
+  | map toLower f `elem` ["compact", "c"] = return CompactFormat
+  | map toLower f `elem` ["detail", "d"]  = return DetailedFormat
+  | otherwise = do
+      hPutStr stderr "Allowed value for -f : c[ompact], d[etail]"
+      exitFailure
+
+getPDFMode :: String -> IO PDFMode
+getPDFMode m
+  | map toLower m `elem` ["image", "i"] = return ImagePDFMode
+  | map toLower m `elem` ["text", "t"]  = return TextPDFMode
+  | otherwise = do
+      hPutStr stderr "Allowed value for -p : i[mage], t[ext]"
+      exitFailure
 
 usage :: IO ()
 usage = do

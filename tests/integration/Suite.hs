@@ -12,7 +12,7 @@ import Network.URI
 import Test.Hspec
 
 import Gratte.Options
-import Gratte.TypeDefs
+import Gratte.Document
 import Gratte.Add    (addDocuments)
 import Gratte.Search (getDocs)
 import Gratte.Utils  (getFilesRecurs)
@@ -47,6 +47,7 @@ opts tmpDir = Options {
   , logFilePath  = tmpDir </> "log"
   , outputFormat = DetailedFormat
   , esIndex      = EsIndex "gratte_test"
+  , pdfMode      = NoPDFMode
 }
 
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Gratte.Search (
   searchDocs
   , getDocs
@@ -9,6 +11,7 @@ import           Control.Monad.Gratte
 import           Control.Arrow
 
 import           Data.Char
+import           Data.Maybe
 import           Data.List.Split (splitOn)
 import qualified Data.Text                  as T
 
@@ -19,7 +22,7 @@ import           Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BS
 
 import Gratte.Options
-import Gratte.TypeDefs
+import Gratte.Document
 
 searchDocs :: String -> Gratte ()
 searchDocs queryText = do
@@ -77,7 +80,8 @@ docInfo doc = [
                       >>> map capitalize
                       >>> unwords) path
         tagString = unwords . map toText $ tags doc
-        scannedText = take 200 . T.unpack $ freeText doc
+        scannedText = take 200 . T.unpack
+                    $ fromMaybe "N/A" (freeText doc)
 
 capitalize :: String -> String
 capitalize []     = []
