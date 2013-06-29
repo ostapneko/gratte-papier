@@ -13,10 +13,10 @@ import qualified Data.Text.IO as TIO
 import qualified Data.List    as L
 
 import System.IO.Temp
-import System.Process
 import System.Exit
 import System.FilePath
 import System.Directory
+import System.GratteExternalCommands
 
 import Gratte.Options
 
@@ -29,37 +29,36 @@ extractText file = do
   let ext = takeExtension file
   opts   <- getOptions
   liftIO $ withSystemTempDirectory "ocr-text" $ \tempDir -> do
-    flip gratte opts $
+    withGratte opts $
       case (ext, pdfM, hasOcr) of
-        (".pdf", NoPDFMode, False) -> do
-          logWarning "PDF file found but no PDF mode specified and no OCR... Assuming no text is to be extracted from the PDF."
-          return Nothing
-        (".pdf", NoPDFMode, True) -> do
-          logWarning "PDF file found with OCR but no PDF mode specified... Fallback to image mode"
-          extractPDFImage tempDir file
-        (".pdf", ImagePDFMode, _) -> do
-          extractPDFImage tempDir file
-        (".pdf", TextPDFMode, _) -> do
-          extractPDFText tempDir file
-        (_, _, False) -> return Nothing
-        (_, _, True) -> do
-          extractImage tempDir file
+        (".pdf", NoPDFMode   , False) -> handleNoPDFModeNoOCR
+        (".pdf", NoPDFMode   , True ) -> handleNoPDFModeWithOCR tempDir file
+        (".pdf", ImagePDFMode, _    ) -> extractPDFImage tempDir file
+        (".pdf", TextPDFMode , _    ) -> extractPDFText tempDir file
+        (_     , _           , False) -> return Nothing
+        (_     , _           , True ) -> extractImage tempDir file
+
+handleNoPDFModeNoOCR :: Gratte (Maybe T.Text)
+handleNoPDFModeNoOCR = do
+  logWarning "PDF file found but no PDF mode specified and no OCR... Assuming no text is to be extracted from the PDF."
+  return Nothing
+
+handleNoPDFModeWithOCR :: TextExtractor
+handleNoPDFModeWithOCR tempDir file = do
+  logWarning "PDF file found with OCR but no PDF mode specified... Fallback to image mode"
+  extractPDFImage tempDir file
 
 extractImage :: TextExtractor
 extractImage tempDir file = do
   opts <- getOptions
   liftIO $ withTempFile tempDir "temp-ocr" $ \tempFile _ -> do
-    (exitCode, _, err) <- do
-      readProcessWithExitCode
-        "tesseract"
-        [file, tempFile]
-        ""
+    (exitCode, err) <- execTesseract file tempFile
     case exitCode of
       ExitSuccess   -> do
         rawText <- TIO.readFile (tempFile ++ ".txt")
         return . Just $ T.map removeStrangeChars rawText
       ExitFailure _ -> do
-        flip gratte opts $ do
+        withGratte opts $ do
           logError $ "Could not OCR the file: " ++ file
           logError err
           return Nothing
@@ -68,17 +67,11 @@ extractPDFImage :: TextExtractor
 extractPDFImage tempDir file = do
   opts <- getOptions
   liftIO $ do
-    (exitCode, _, err) <- do
-      readProcessWithExitCode
-        "convert"
-        [file, tempDir </> "temp-png.png"]
-        ""
-    case exitCode of
-      ExitSuccess -> flip gratte opts $ do
-                       mText <- extractSingleImage tempDir
-                       return mText
-      ExitFailure _ -> do
-        flip gratte opts $ do
+    (exitCode, err) <- execConvert file tempDir
+    withGratte opts $ do
+      case exitCode of
+        ExitSuccess   -> extractSingleImage tempDir
+        ExitFailure _ -> do
           logError $ "Could not convert the PDF file to image: " ++ file
           logError err
           return Nothing
@@ -90,17 +83,11 @@ extractSingleImage tempDir = do
   liftIO $ do
     imagesBaseNames <- filter (L.isSuffixOf ".png") `liftM` (getDirectoryContents tempDir)
     let images = map (\ n -> tempDir </> n) imagesBaseNames
-    (exitCode, _, err) <- do
-      readProcessWithExitCode
-        "convert"
-        (images ++ ["-append", singleImage])
-        ""
-    case exitCode of
-      ExitSuccess -> flip gratte opts $ do
-                       mText <- extractImage tempDir singleImage
-                       return mText
-      ExitFailure _ -> do
-        flip gratte opts $ do
+    (exitCode, err) <- execConvertAppend images singleImage
+    withGratte opts $ do
+      case exitCode of
+        ExitSuccess   -> extractImage tempDir singleImage
+        ExitFailure _ -> do
           logError $ "Could OCR the image: " ++ singleImage
           logError err
           return Nothing
@@ -109,17 +96,13 @@ extractPDFText :: TextExtractor
 extractPDFText tempDir file  = do
   opts <- getOptions
   liftIO $ withTempFile tempDir "temp-pdf-text.txt" $ \tempFile h -> do
-    (exitCode, _, err) <- do
-      readProcessWithExitCode
-        "pdftotext"
-        [file, tempFile]
-        ""
+    (exitCode, err) <- execPDFToText file tempFile
     case exitCode of
       ExitSuccess   -> do
         rawText <- TIO.hGetContents h
         return . Just $ T.map removeStrangeChars rawText
       ExitFailure _ -> do
-        flip gratte opts $ do
+        withGratte opts $ do
           logError $ "Could not convert the pdf file: " ++ file
           logError err
           return Nothing

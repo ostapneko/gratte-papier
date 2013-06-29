@@ -18,7 +18,7 @@ main = do
   opts <- foldl (>>=) defaultOptions actions
   return ()
 
-  flip gratte opts $ do
+  withGratte opts $ do
     setupLogger
     m <- getOption mode
     case errors of

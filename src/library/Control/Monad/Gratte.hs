@@ -1,5 +1,6 @@
-module Control.Monad.Gratte (
-  Gratte(..)
+module Control.Monad.Gratte
+  ( Gratte(..)
+  , withGratte
   , getOptions, getOption
   , logMsg
   , logDebug
@@ -21,6 +22,9 @@ import System.Log.GratteLogger
 import Gratte.Options
 
 data Gratte a = Gratte { gratte :: Options -> IO a }
+
+withGratte :: Options -> Gratte a -> IO a
+withGratte = flip gratte
 
 instance Monad Gratte where
   return x = Gratte $ \_ -> return x
@@ -75,4 +79,3 @@ setupLogger = do
                 _         -> Notice
   let settings = LoggerSettings path level
   liftIO $ configureLogger settings
-
