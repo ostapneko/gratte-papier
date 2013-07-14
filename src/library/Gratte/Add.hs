@@ -21,6 +21,7 @@ import Gratte.Options
 import Gratte.Document
 import Gratte.TextExtractor (extractText)
 
+-- | Add several documents with the same tags
 addDocuments :: [Tag] -> [FilePath] -> Gratte ()
 addDocuments ts files = do
   logStartAddingFiles ts files
@@ -37,6 +38,7 @@ addDocuments ts files = do
   liftIO $ replicateM_ (length existingFiles) (takeMVar mvar >> return ())
   logDoneAddingFiles files
 
+-- | Add a single file with multiple tags
 processFile :: FilePath -> [Tag] -> Gratte ()
 processFile f ts = do
   logDebug $ "Processing file '" ++ f ++ "' ..."
@@ -79,7 +81,9 @@ toNestedFilePath dir time (Prefix prf) f =
      </> [a] </> [b] </> [c]
      </> prf ++ "-" ++ rest ++ ext
 
-copyToRepo :: FilePath -> Document -> Gratte ()
+copyToRepo :: FilePath -- ^ The path to the original file
+           -> Document -- ^ The 'Document' representation of the file
+           -> Gratte ()
 copyToRepo file doc = do
   let newFile = filepath doc
   let dir = takeDirectory newFile
@@ -88,8 +92,8 @@ copyToRepo file doc = do
   unless isDryRun $ liftIO $ do
     createDirectoryIfMissing True dir
     copyFile file newFile
-    forM_ (tags doc) $ \(Tag t) -> do
-      appendFile (dir </> "tags") (t ++ "\n")
+    let metadataFile = replaceExtension newFile "metadata"
+    appendFile metadataFile $ show doc
 
 sendToES :: Document -> Gratte ()
 sendToES doc = do

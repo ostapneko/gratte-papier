@@ -1,9 +1,7 @@
 - Add reindexing test
 - Add tests for PDF
-- Add unit tests for path recreation in reindex
 - Tweak search
 - More formatting control
 - Controllable number of results
 - Test for multi-cpu
 - Add a proper README
-- Remove tag file and use a Document dump instead

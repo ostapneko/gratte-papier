@@ -14,9 +14,9 @@ data Document = Document {
   , filepath :: FilePath
   , tags     :: [Tag]
   , freeText :: Maybe T.Text
-  }
+  } deriving (Show, Read)
 
-newtype DocumentHash   = DocumentHash String
+newtype DocumentHash = DocumentHash String deriving (Show, Read)
 
 instance ToJSON DocumentHash where
   toJSON (DocumentHash h) = toJSON $ T.pack h
@@ -25,7 +25,7 @@ instance FromJSON DocumentHash where
   parseJSON (String h) = return $ DocumentHash $ T.unpack h
   parseJSON _          = mzero
 
-newtype Tag = Tag String deriving (Show, Eq)
+newtype Tag = Tag String deriving (Show, Eq, Read)
 
 instance ToJSON Tag where
   toJSON (Tag t) = toJSON $ T.pack t
