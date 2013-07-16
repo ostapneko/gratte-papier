@@ -31,9 +31,10 @@ searchDocs queryText = do
 
 getDocs :: String -> Gratte [Document]
 getDocs queryText = do
-  EsHost h <- getOption esHost
+  EsHost h  <- getOption esHost
   EsIndex i <- getOption esIndex
-  let queryString = "?q=" ++ (urlEncode queryText)
+  size      <- getOption resultSize
+  let queryString = "?q=" ++ (urlEncode queryText) ++ "&size=" ++ (show size)
   let url = h </> i </> "document" </> "_search" ++ queryString
   logDebug $ "Querying for '" ++ queryText ++ "'"
   result <- liftIO . simpleHTTP $ getRequest url

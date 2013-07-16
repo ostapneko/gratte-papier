@@ -41,6 +41,7 @@ testOpts tmpDir = Options {
   , outputFormat = DetailedFormat
   , esIndex      = EsIndex "gratte_test"
   , pdfMode      = NoPDFMode
+  , resultSize   = 100
 }
 
 cleanES :: Gratte ()

@@ -31,6 +31,7 @@ data Options = Options {
   , logFilePath  :: FilePath
   , outputFormat :: OutputFormat
   , pdfMode      :: PDFMode
+  , resultSize   :: Int
 }
 
 defaultOptions :: IO Options
@@ -50,6 +51,7 @@ defaultOptions = do
   , logFilePath  = "/var/log/gratte/gratte.log"
   , outputFormat = DetailedFormat
   , pdfMode      = NoPDFMode
+  , resultSize   = 100
 }
 
 options :: [OptDescr (Options -> IO Options)]
@@ -106,6 +108,10 @@ options = [
     , Option "p" ["pdf-mode"]
              (ReqArg (\arg opts -> do m <- getPDFMode arg; return opts { pdfMode = m}) "i[mage]|t[text]")
              "The text recognition mode for PDF files, when used in conjonction with -o. '-p image' will consider the pdf as an image, while '-p text' will treat the PDF as text. This option is mandatory if you are scanning at least one PDF file with OCR."
+
+    , Option "n" ["result-size"]
+             (ReqArg (\arg opts -> do s <- getResultSize arg; return opts { resultSize = s }) "SIZE")
+             "The size of the result list. Defaults to 100."
   ]
 
 getMode :: String -> IO Mode
@@ -132,6 +138,13 @@ getPDFMode m
   | otherwise = do
       hPutStr stderr "Allowed value for -p : i[mage], t[ext]"
       exitFailure
+
+getResultSize :: String -> IO Int
+getResultSize s = case reads s of
+  [(s', _)] -> return s'
+  _         -> do
+    hPutStr stderr "Need a numeric value for the \"result-size\" option"
+    exitFailure
 
 usage :: IO ()
 usage = do
