@@ -9,11 +9,13 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import Control.Applicative
 import Control.Monad
 
+import Gratte.Tag
+
 data Document = Document {
-    hash     :: DocumentHash
-  , filepath :: FilePath
-  , tags     :: [Tag]
-  , freeText :: Maybe T.Text
+    docHash     :: DocumentHash
+  , docFilepath :: FilePath
+  , docTags     :: [Tag]
+  , docFreeText :: Maybe T.Text
   } deriving (Show, Read)
 
 newtype DocumentHash = DocumentHash String deriving (Show, Read)
@@ -24,18 +26,6 @@ instance ToJSON DocumentHash where
 instance FromJSON DocumentHash where
   parseJSON (String h) = return $ DocumentHash $ T.unpack h
   parseJSON _          = mzero
-
-newtype Tag = Tag String deriving (Show, Eq, Read)
-
-instance ToJSON Tag where
-  toJSON (Tag t) = toJSON $ T.pack t
-
-instance FromJSON Tag where
-  parseJSON (String t) = return $ Tag $ T.unpack t
-  parseJSON _          = mzero
-
-toText :: Tag -> String
-toText (Tag t) = t
 
 instance ToJSON Document where
   toJSON (Document _ fp ts ft) =

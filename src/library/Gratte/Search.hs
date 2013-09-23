@@ -23,6 +23,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 
 import Gratte.Options
 import Gratte.Document
+import Gratte.Tag
 
 searchDocs :: String -> Gratte ()
 searchDocs queryText = do
@@ -59,7 +60,7 @@ outputDoc :: Document -> Gratte ()
 outputDoc doc = do
   format <- getOption outputFormat
   case format of
-    CompactFormat -> liftIO . putStrLn $ filepath doc
+    CompactFormat -> liftIO . putStrLn $ docFilepath doc
     DetailedFormat -> liftIO $ do
       mapM_ putStrLn $ docInfo doc
       putStrLn "---------------------"
@@ -71,7 +72,7 @@ docInfo doc = [
                 , "Tags: " ++ tagString
                 , "\nScanned text extract: \n" ++ scannedText
               ]
-  where path = filepath doc
+  where path = docFilepath doc
         inferredTitle = (takeBaseName
                       >>> reverse
                       >>> dropWhile isAlphaNum
@@ -80,9 +81,9 @@ docInfo doc = [
                       >>> splitOn "-"
                       >>> map capitalize
                       >>> unwords) path
-        tagString = unwords . map toText $ tags doc
+        tagString = unwords . map toText $ docTags doc
         scannedText = take 200 . T.unpack
-                    $ fromMaybe "N/A" (freeText doc)
+                    $ fromMaybe "N/A" (docFreeText doc)
 
 capitalize :: String -> String
 capitalize []     = []

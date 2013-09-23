@@ -4,10 +4,6 @@ import Control.Monad.Trans
 
 import System.FilePath
 import System.IO
-import System.IO.Temp
-
-import Network.HTTP
-import Network.URI
 
 import Test.Hspec
 import TestHelper
@@ -16,6 +12,7 @@ import Gratte.Document
 import Gratte.Add      (addDocuments)
 import Gratte.Search   (getDocs)
 import Gratte.Utils    (getFilesRecurs)
+import Gratte.Tag
 
 main :: IO ()
 main = hspec $ do
@@ -37,7 +34,7 @@ main = hspec $ do
 
 addExampleDoc :: Gratte ()
 addExampleDoc = do
-  addDocuments [Tag "tag"] [exampleFile]
+  addDocuments [exampleFile]
 
 waitForIndexing :: Gratte ()
 waitForIndexing = liftIO $ threadDelay 2000000
@@ -57,7 +54,7 @@ assertFileCopy actSize = do
 assertSearchSuccess :: [Document] -> Expectation
 assertSearchSuccess docs = do
   length docs `shouldBe` 1
-  tags (head docs) `shouldBe` [Tag "tag"]
+  docTags (head docs) `shouldBe` [Tag "tag"]
 
 getFileSize :: FilePath -> IO Integer
 getFileSize file = withFile file ReadMode hFileSize

@@ -9,19 +9,20 @@ import System.Environment
 import System.Directory
 
 import Data.Char
+import qualified Data.List.Split as SPL
+
+import Gratte.Tag
 
 newtype EsHost  = EsHost String
 newtype EsIndex = EsIndex String
 newtype Prefix  = Prefix String
 
-data Mode         = AddMode | QueryMode | ReindexMode
 data PDFMode      = NoPDFMode | ImagePDFMode | TextPDFMode
 data OutputFormat = CompactFormat | DetailedFormat
 
 data Options = Options {
     verbose      :: Bool
   , silent       :: Bool
-  , mode         :: Mode
   , esHost       :: EsHost
   , esIndex      :: EsIndex
   , prefix       :: Prefix
@@ -32,6 +33,7 @@ data Options = Options {
   , outputFormat :: OutputFormat
   , pdfMode      :: PDFMode
   , resultSize   :: Int
+  , tags         :: [Tag]
 }
 
 defaultOptions :: IO Options
@@ -41,7 +43,6 @@ defaultOptions = do
   return Options {
     verbose      = False
   , silent       = False
-  , mode         = QueryMode
   , esHost       = EsHost "http://localhost:9200"
   , esIndex      = EsIndex "gratte"
   , prefix       = Prefix "doc"
@@ -52,6 +53,7 @@ defaultOptions = do
   , outputFormat = DetailedFormat
   , pdfMode      = NoPDFMode
   , resultSize   = 100
+  , tags         = []
 }
 
 options :: [OptDescr (Options -> IO Options)]
@@ -76,15 +78,13 @@ options = [
              (ReqArg (\arg opts -> return opts { esIndex = EsIndex arg }) "INDEX")
              "Elastic search index, defaults to 'gratte'"
 
-    , Option "m" ["mode"]
-             (ReqArg (\arg opts -> do m <- getMode arg; return opts { mode = m }) "q[uery]|a[dd]|r[eindex]")
-             ("In query mode (default), find the docs which match the args\n" ++
-             "In add mode, add the docs taken in stdin, and tag them with the args\n" ++
-             "In reindex mode, delete ES index and reingest the files in the gratte folder into ES")
-
     , Option "t" ["title"]
              (ReqArg (\arg opts -> return opts { prefix = Prefix arg }) "TITLE")
              "Prefixes the files with the title argument. Defaults to 'doc'. Try to use this-kind-of-case."
+
+    , Option "T" ["tags"]
+             (ReqArg (\arg opts -> return opts { tags = map (Tag . dropWhile (==' ')) . SPL.splitOneOf ",:" $ arg }) "TAG1,TAG2")
+             "Add a comma or colon separated list of tags to the document. Only useful in add mode."
 
     , Option "" ["folder"]
              (ReqArg (\arg opts -> return opts { folder = arg }) "OUTPUT FOLDER")
@@ -113,15 +113,6 @@ options = [
              (ReqArg (\arg opts -> do s <- getResultSize arg; return opts { resultSize = s }) "SIZE")
              "The size of the result list. Defaults to 100."
   ]
-
-getMode :: String -> IO Mode
-getMode m
-  | map toLower m `elem` ["add", "a"]     = return AddMode
-  | map toLower m `elem` ["reindex", "r"] = return ReindexMode
-  | map toLower m `elem` ["query", "q"]   = return QueryMode
-  | otherwise = do
-      hPutStr stderr "Allowed value for -m : a[dd], r[eindex], q[uery]"
-      exitFailure
 
 getFormat :: String -> IO OutputFormat
 getFormat f

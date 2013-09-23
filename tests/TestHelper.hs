@@ -13,8 +13,7 @@ import Network.HTTP
 import Network.URI
 
 import Gratte.Options
-
-import Test.Hspec
+import Gratte.Tag
 
 -- | Execute the test in a test context, using 'testOpts'
 inTestContext :: (Options -> FilePath -> IO a) -- ^ A function taking as argmument the test options and the temp folder
@@ -31,7 +30,6 @@ testOpts :: FilePath -- ^ The temp folder to use for tests
 testOpts tmpDir = Options {
     verbose      = False
   , silent       = True
-  , mode         = AddMode
   , esHost       = EsHost "http://localhost:9200"
   , prefix       = Prefix "doc"
   , folder       = tmpDir
@@ -42,13 +40,14 @@ testOpts tmpDir = Options {
   , esIndex      = EsIndex "gratte_test"
   , pdfMode      = NoPDFMode
   , resultSize   = 100
+  , tags         = [Tag "tag"]
 }
 
 cleanES :: Gratte ()
 cleanES = do
-  (EsHost esHost)   <- getOption esHost
-  (EsIndex esIndex) <- getOption esIndex
-  let url = esHost </> esIndex
+  (EsHost esHost')   <- getOption esHost
+  (EsIndex esIndex') <- getOption esIndex
+  let url = esHost' </> esIndex'
   let mURI = parseURI url
   case mURI of
     Nothing -> do

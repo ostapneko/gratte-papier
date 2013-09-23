@@ -20,10 +20,12 @@ import           Data.Hash.MD5
 import Gratte.Options
 import Gratte.Document
 import Gratte.TextExtractor (extractText)
+import Gratte.Tag
 
 -- | Add several documents with the same tags
-addDocuments :: [Tag] -> [FilePath] -> Gratte ()
-addDocuments ts files = do
+addDocuments :: [FilePath] -> Gratte ()
+addDocuments files = do
+  ts <- getOption tags
   logStartAddingFiles ts files
 
   mvar <- liftIO $ newEmptyMVar
@@ -57,10 +59,10 @@ metadataToDoc ts file = do
   let fp = toNestedFilePath f h prf file
   ft  <- extractText file
   return $ Document {
-      hash      = DocumentHash h
-    , filepath  = fp
-    , tags      = ts
-    , freeText  = ft
+      docHash     = DocumentHash h
+    , docFilepath = fp
+    , docTags     = ts
+    , docFreeText = ft
     }
 
 getHash :: IO String
@@ -85,7 +87,7 @@ copyToRepo :: FilePath -- ^ The path to the original file
            -> Document -- ^ The 'Document' representation of the file
            -> Gratte ()
 copyToRepo file doc = do
-  let newFile = filepath doc
+  let newFile = docFilepath doc
   let dir = takeDirectory newFile
   logDebug $ "\tCopy " ++ file ++ " to " ++ newFile
   isDryRun <- getOption dryRun
@@ -100,7 +102,7 @@ sendToES doc = do
   (EsHost h)  <- getOption esHost
   (EsIndex i) <- getOption esIndex
   isDryRun    <- getOption dryRun
-  let (DocumentHash docId) = hash doc
+  let (DocumentHash docId) = docHash doc
   let url                  = h </> i </> "document" </> docId
   let payload              = toPayload doc
   logDebug $ "\tSending payload: " ++ toPayload doc
@@ -110,7 +112,7 @@ sendToES doc = do
 
 logStartAddingFiles :: [Tag] -> [FilePath] -> Gratte ()
 logStartAddingFiles ts fs = do
-  logDebug $ "Adding files \n\t"
+  logDebug $ "Adding f0iles \n\t"
           ++ L.intercalate "\n\t" fs
           ++ "\nwith tags \n\t"
           ++ L.intercalate "\n\t" (map toText ts)
