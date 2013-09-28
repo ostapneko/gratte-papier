@@ -9,7 +9,7 @@ import Test.Hspec
 import TestHelper
 
 import Gratte.Document
-import Gratte.Add      (addDocuments)
+import Gratte.Add
 import Gratte.Search   (getDocs)
 import Gratte.Utils    (getFilesRecurs)
 import Gratte.Tag
@@ -34,7 +34,8 @@ main = hspec $ do
 
 addExampleDoc :: Gratte ()
 addExampleDoc = do
-  addDocuments [exampleFile]
+  docs <- createDocuments [exampleFile]
+  archive $ zip [exampleFile] docs
 
 waitForIndexing :: Gratte ()
 waitForIndexing = liftIO $ threadDelay 2000000

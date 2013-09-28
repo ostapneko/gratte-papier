@@ -12,6 +12,7 @@ import System.IO.Temp
 import Network.HTTP
 import Network.URI
 
+import Gratte.Document
 import Gratte.Options
 import Gratte.Tag
 
@@ -31,8 +32,8 @@ testOpts tmpDir = Options {
     verbose      = False
   , silent       = True
   , esHost       = EsHost "http://localhost:9200"
-  , prefix       = Prefix "doc"
-  , folder       = tmpDir
+  , title        = DocumentTitle "doc"
+  , folder       = GratteFolder tmpDir
   , dryRun       = False
   , ocr          = True
   , logFilePath  = tmpDir </> "log"

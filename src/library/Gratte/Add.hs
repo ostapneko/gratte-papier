@@ -1,12 +1,14 @@
-module Gratte.Add (
-  addDocuments
+module Gratte.Add
+  ( archive
   , sendToES
+  , createDocuments
   ) where
 
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Gratte
-import Control.Concurrent
+
+import Data.Char
 
 import System.FilePath
 import System.Directory
@@ -20,65 +22,75 @@ import           Data.Hash.MD5
 import Gratte.Options
 import Gratte.Document
 import Gratte.TextExtractor (extractText)
-import Gratte.Tag
 
 -- | Add several documents with the same tags
-addDocuments :: [FilePath] -> Gratte ()
-addDocuments files = do
-  ts <- getOption tags
-  logStartAddingFiles ts files
-
-  mvar <- liftIO $ newEmptyMVar
-  existingFiles <- liftIO $ filterM doesFileExist files
-  opts <- getOptions
-
-  liftIO $ forM_ existingFiles $ \file -> forkIO $ do
-    fileIsNotDir <- doesFileExist file
-    when fileIsNotDir $ do
-      gratte (processFile file ts) opts >> putMVar mvar ()
-
-  liftIO $ replicateM_ (length existingFiles) (takeMVar mvar >> return ())
-  logDoneAddingFiles files
+archive :: [(FilePath, Document)] -> Gratte ()
+archive pairs = do
+  let docs = map snd pairs
+  logStartAddingFiles docs
+  forM_ pairs $ \ (file, doc) -> processFile file doc
+  logDoneAddingFiles docs
 
 -- | Add a single file with multiple tags
-processFile :: FilePath -> [Tag] -> Gratte ()
-processFile f ts = do
-  logDebug $ "Processing file '" ++ f ++ "' ..."
-  --create doc
-  doc <- metadataToDoc ts f
+processFile :: FilePath -> Document -> Gratte ()
+processFile f doc = do
   -- copy file
   copyToRepo f doc
   -- send to ElasticSearch
   sendToES doc
 
-metadataToDoc :: [Tag] -> FilePath -> Gratte Document
-metadataToDoc ts file = do
-  f   <- getOption folder
-  prf <- getOption prefix
-  h   <- liftIO $ getHash
-  let fp = toNestedFilePath f h prf file
-  ft  <- extractText file
-  return $ Document {
-      docHash     = DocumentHash h
-    , docFilepath = fp
-    , docTags     = ts
-    , docFreeText = ft
-    }
+-- | Create a list of docuements from filepaths
+-- If there are more than one document, their title
+-- and file name contain the page number
+createDocuments :: [FilePath] -> Gratte [Document]
+createDocuments [path] = do doc <- createDocument Nothing path; return [doc]
+createDocuments paths  = do
+  let pageAndPath = zip [1..] paths
+  forM pageAndPath $ \ (page, path) -> createDocument (Just page) path
 
-getHash :: IO String
+-- | Create a document. It doesn't persist it.
+createDocument :: Maybe Int -- ^ The page number
+               -> FilePath  -- ^ The path to the original document
+               -> Gratte Document
+createDocument mPage path = do
+  hash      <- liftIO getHash
+  DocumentTitle title'    <- getOption title
+  gratteDir <- getOption folder
+  tags'     <- getOption tags
+  mText     <- extractText path
+  let titleWithPage = case mPage of
+        Nothing -> title'
+        Just page -> title' ++ " (Page " ++ show page ++ ")"
+      prefix = makePrefix (DocumentTitle titleWithPage)
+      docPath = toNestedFilePath gratteDir hash prefix path
+  return $ Document {
+             docHash        = hash
+           , docTitle       = DocumentTitle titleWithPage
+           , docFilepath    = DocumentPath docPath
+           , docTags        = tags'
+           , docScannedText = mText
+           }
+
+makePrefix :: DocumentTitle -> Prefix
+makePrefix (DocumentTitle t) =
+    let prf =  filter isAscii . map (replaceSpaces . toLower) $ t
+    in Prefix prf
+  where replaceSpaces c = if (isSpace c) then '-' else c
+
+getHash :: IO DocumentHash
 getHash = do
   TOD s ps <- getClockTime
   let timeStamp = show (s * 1000000000000 + ps)
-  return $ md5s $ Str timeStamp
+  return $ DocumentHash $ md5s $ Str timeStamp
 
-toNestedFilePath :: FilePath
-                 -> String
+toNestedFilePath :: GratteFolder
+                 -> DocumentHash
                  -> Prefix
                  -> FilePath
                  -> FilePath
-toNestedFilePath dir time (Prefix prf) f =
+toNestedFilePath (GratteFolder dir) (DocumentHash hash) (Prefix prf) f =
   let ext          = takeExtension f
-      (a:b:c:rest) = time
+      (a:b:c:rest) = hash
   in dir
      </> [a] </> [b] </> [c]
      </> prf ++ "-" ++ rest ++ ext
@@ -87,7 +99,7 @@ copyToRepo :: FilePath -- ^ The path to the original file
            -> Document -- ^ The 'Document' representation of the file
            -> Gratte ()
 copyToRepo file doc = do
-  let newFile = docFilepath doc
+  let DocumentPath newFile = docFilepath doc
   let dir = takeDirectory newFile
   logDebug $ "\tCopy " ++ file ++ " to " ++ newFile
   isDryRun <- getOption dryRun
@@ -110,14 +122,12 @@ sendToES doc = do
     _ <- liftIO . simpleHTTP $ postRequestWithBody url "application/json" payload
     return ()
 
-logStartAddingFiles :: [Tag] -> [FilePath] -> Gratte ()
-logStartAddingFiles ts fs = do
-  logDebug $ "Adding f0iles \n\t"
-          ++ L.intercalate "\n\t" fs
-          ++ "\nwith tags \n\t"
-          ++ L.intercalate "\n\t" (map toText ts)
+logStartAddingFiles :: [Document] -> Gratte ()
+logStartAddingFiles docs = do
+  logDebug $ "Adding files \n\t"
+          ++ L.intercalate "\n\t" (map (documentPathToString . docFilepath) docs)
   logNotice $ "Starting..."
 
-logDoneAddingFiles :: [FilePath] -> Gratte ()
-logDoneAddingFiles files = logNotice $
-  "Done adding " ++ show (length files) ++ " files."
+logDoneAddingFiles :: [Document] -> Gratte ()
+logDoneAddingFiles docs = logNotice $
+  "Done adding " ++ show (length docs) ++ " files."

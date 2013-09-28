@@ -59,9 +59,11 @@ logAndReturnEmpty msg = do
 outputDoc :: Document -> Gratte ()
 outputDoc doc = do
   format <- getOption outputFormat
-  case format of
-    CompactFormat -> liftIO . putStrLn $ docFilepath doc
-    DetailedFormat -> liftIO $ do
+  liftIO $ case format of
+    CompactFormat -> do
+      let (DocumentPath docPath) = docFilepath doc
+      putStrLn docPath
+    DetailedFormat -> do
       mapM_ putStrLn $ docInfo doc
       putStrLn "---------------------"
 
@@ -72,7 +74,7 @@ docInfo doc = [
                 , "Tags: " ++ tagString
                 , "\nScanned text extract: \n" ++ scannedText
               ]
-  where path = docFilepath doc
+  where DocumentPath path = docFilepath doc
         inferredTitle = (takeBaseName
                       >>> reverse
                       >>> dropWhile isAlphaNum
@@ -83,7 +85,7 @@ docInfo doc = [
                       >>> unwords) path
         tagString = unwords . map toText $ docTags doc
         scannedText = take 200 . T.unpack
-                    $ fromMaybe "N/A" (docFreeText doc)
+                      $ fromMaybe "N/A" (docScannedText doc)
 
 capitalize :: String -> String
 capitalize []     = []

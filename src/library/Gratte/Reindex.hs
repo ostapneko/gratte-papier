@@ -37,7 +37,7 @@ deleteIndex = do
 
 importFiles :: Gratte ()
 importFiles = do
-  f <- getOption folder
+  GratteFolder f <- getOption folder
   logNotice $ "Starting file imports from folder: " ++ f ++ " ..."
   files <- liftIO $ (filter notMetadata) `liftM` getFilesRecurs f
   mapM_ importFile files

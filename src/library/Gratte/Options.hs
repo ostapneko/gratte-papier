@@ -13,10 +13,12 @@ import           Data.Char
 import qualified Data.List.Split as SPL
 
 import           Gratte.Tag
+import           Gratte.Document
 
 newtype EsHost  = EsHost String
 newtype EsIndex = EsIndex String
 newtype Prefix  = Prefix String
+newtype GratteFolder = GratteFolder FilePath
 
 data PDFMode      = NoPDFMode | ImagePDFMode | TextPDFMode
 data OutputFormat = CompactFormat | DetailedFormat
@@ -26,8 +28,8 @@ data Options = Options
   , silent       :: Bool
   , esHost       :: EsHost
   , esIndex      :: EsIndex
-  , prefix       :: Prefix
-  , folder       :: FilePath
+  , title        :: DocumentTitle
+  , folder       :: GratteFolder
   , dryRun       :: Bool
   , ocr          :: Bool
   , logFilePath  :: FilePath
@@ -40,13 +42,13 @@ data Options = Options
 defaultOptions :: IO Options
 defaultOptions = do
   homeDir <- getHomeDirectory
-  let defaultFolder = homeDir ++ "/.gratte"
+  let defaultFolder = GratteFolder $  homeDir ++ "/.gratte"
   return Options {
     verbose      = False
   , silent       = False
   , esHost       = EsHost "http://localhost:9200"
   , esIndex      = EsIndex "gratte"
-  , prefix       = Prefix "doc"
+  , title        = DocumentTitle "Doc"
   , folder       = defaultFolder
   , dryRun       = False
   , ocr          = False
@@ -83,15 +85,15 @@ options = [
              "Elastic search index, defaults to 'gratte'"
 
     , Option "t" ["title"]
-             (ReqArg (\arg opts -> return opts { prefix = Prefix arg }) "TITLE")
-             "Prefixes the files with the title argument. Defaults to 'doc'. Try to use this-kind-of-case."
+             (ReqArg (\arg opts -> return opts { title = DocumentTitle arg }) "TITLE")
+             "The title of the document"
 
     , Option "T" ["tags"]
              (ReqArg (\arg opts -> return opts { tags = map (Tag . dropWhile (==' ')) . SPL.splitOneOf ",:" $ arg }) "TAG1,TAG2")
              "Add a comma or colon separated list of tags to the document. Only useful in add mode."
 
     , Option "" ["folder"]
-             (ReqArg (\arg opts -> return opts { folder = arg }) "OUTPUT FOLDER")
+             (ReqArg (\arg opts -> return opts { folder = GratteFolder arg }) "OUTPUT FOLDER")
              "The output folder. Defaults to ~/.gratte"
 
     , Option "d" ["dry-run"]
@@ -126,7 +128,7 @@ getResultSize s = case reads s of
 usage :: IO ()
 usage = do
   prg <- getProgName
-  let header = "Usage: " ++ prg ++ " [options] [tags]\n\n" ++
+  let header = "Usage: " ++ prg ++ " [add file1 file2...|reindex|myquerystring]\n\n" ++
                "Options:"
   hPutStr stderr $ usageInfo header options
 
