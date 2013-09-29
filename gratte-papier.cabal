@@ -19,6 +19,7 @@ executable gratte-papier
                      , HTTP
                      , MissingH
                      , aeson
+                     , attoparsec
                      , bytestring
                      , directory
                      , either
@@ -29,6 +30,7 @@ executable gratte-papier
                      , old-time
                      , process
                      , split
+                     , template-haskell
                      , temporary
                      , text
                      , unix
@@ -46,6 +48,7 @@ test-suite integration
                      , HUnit
                      , MissingH
                      , aeson
+                     , attoparsec
                      , bytestring
                      , directory
                      , either
@@ -57,7 +60,7 @@ test-suite integration
                      , old-time
                      , process
                      , split
-                     , temporary
+                     , template-haskell
                      , temporary
                      , text
                      , unix

@@ -8,7 +8,9 @@ import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Gratte
 
+import Data.Aeson
 import Data.Char
+import qualified Data.ByteString.Lazy.Char8 as BS
 
 import System.FilePath
 import System.Directory
@@ -53,21 +55,26 @@ createDocument :: Maybe Int -- ^ The page number
                -> FilePath  -- ^ The path to the original document
                -> Gratte Document
 createDocument mPage path = do
+  opts      <- getOptions
   hash      <- liftIO getHash
-  DocumentTitle title'    <- getOption title
   gratteDir <- getOption folder
-  tags'     <- getOption tags
   mText     <- extractText path
+  let titleString   = either (error "Options should have a title") docTitleToString (title opts)
+  let sender'       = either (error "Options should have a sender") id (sender opts)
+  let recipient'    = either (error "Options should have a recipient") id (recipient opts)
   let titleWithPage = case mPage of
-        Nothing -> title'
-        Just page -> title' ++ " (Page " ++ show page ++ ")"
+        Nothing -> titleString
+        Just page -> titleString ++ " (Page " ++ show page ++ ")"
       prefix = makePrefix (DocumentTitle titleWithPage)
-      docPath = toNestedFilePath gratteDir hash prefix path
+      targetPath  = toTargetPath gratteDir hash prefix path
   return $ Document {
              docHash        = hash
            , docTitle       = DocumentTitle titleWithPage
-           , docFilepath    = DocumentPath docPath
-           , docTags        = tags'
+           , docPath        = DocumentPath targetPath
+           , docSender      = sender'
+           , docRecipient   = recipient'
+           , docDate        = date opts
+           , docTags        = tags opts
            , docScannedText = mText
            }
 
@@ -83,12 +90,12 @@ getHash = do
   let timeStamp = show (s * 1000000000000 + ps)
   return $ DocumentHash $ md5s $ Str timeStamp
 
-toNestedFilePath :: GratteFolder
-                 -> DocumentHash
-                 -> Prefix
-                 -> FilePath
-                 -> FilePath
-toNestedFilePath (GratteFolder dir) (DocumentHash hash) (Prefix prf) f =
+toTargetPath :: GratteFolder
+             -> DocumentHash
+             -> Prefix
+             -> FilePath
+             -> FilePath
+toTargetPath (GratteFolder dir) (DocumentHash hash) (Prefix prf) f =
   let ext          = takeExtension f
       (a:b:c:rest) = hash
   in dir
@@ -99,33 +106,30 @@ copyToRepo :: FilePath -- ^ The path to the original file
            -> Document -- ^ The 'Document' representation of the file
            -> Gratte ()
 copyToRepo file doc = do
-  let DocumentPath newFile = docFilepath doc
+  let DocumentPath newFile = docPath doc
   let dir = takeDirectory newFile
   logDebug $ "\tCopy " ++ file ++ " to " ++ newFile
-  isDryRun <- getOption dryRun
-  unless isDryRun $ liftIO $ do
+  liftIO $ do
     createDirectoryIfMissing True dir
     copyFile file newFile
-    let metadataFile = replaceExtension newFile "metadata"
-    appendFile metadataFile $ show doc
+    let metadataFile = replaceExtension newFile "json"
+    BS.writeFile metadataFile $ encode doc
 
 sendToES :: Document -> Gratte ()
 sendToES doc = do
   (EsHost h)  <- getOption esHost
   (EsIndex i) <- getOption esIndex
-  isDryRun    <- getOption dryRun
   let (DocumentHash docId) = docHash doc
   let url                  = h </> i </> "document" </> docId
   let payload              = toPayload doc
   logDebug $ "\tSending payload: " ++ toPayload doc
-  unless isDryRun $ do
-    _ <- liftIO . simpleHTTP $ postRequestWithBody url "application/json" payload
-    return ()
+  _ <- liftIO . simpleHTTP $ postRequestWithBody url "application/json" payload
+  return ()
 
 logStartAddingFiles :: [Document] -> Gratte ()
 logStartAddingFiles docs = do
   logDebug $ "Adding files \n\t"
-          ++ L.intercalate "\n\t" (map (documentPathToString . docFilepath) docs)
+          ++ L.intercalate "\n\t" (map (docPathToString . docPath) docs)
   logNotice $ "Starting..."
 
 logDoneAddingFiles :: [Document] -> Gratte ()

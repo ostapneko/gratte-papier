@@ -8,12 +8,6 @@ module Gratte.Search (
 import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Gratte
-import           Control.Arrow
-
-import           Data.Char
-import           Data.Maybe
-import           Data.List.Split (splitOn)
-import qualified Data.Text                  as T
 
 import           System.FilePath
 
@@ -23,7 +17,6 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 
 import Gratte.Options
 import Gratte.Document
-import Gratte.Tag
 
 searchDocs :: String -> Gratte ()
 searchDocs queryText = do
@@ -60,33 +53,7 @@ outputDoc :: Document -> Gratte ()
 outputDoc doc = do
   format <- getOption outputFormat
   liftIO $ case format of
-    CompactFormat -> do
-      let (DocumentPath docPath) = docFilepath doc
-      putStrLn docPath
+    CompactFormat -> putStrLn . docPathToString . docPath $ doc
     DetailedFormat -> do
-      mapM_ putStrLn $ docInfo doc
+      putStrLn $ describeDoc doc
       putStrLn "---------------------"
-
-docInfo :: Document -> [String]
-docInfo doc = [
-                  "Title: " ++ inferredTitle
-                , "Path: " ++ path
-                , "Tags: " ++ tagString
-                , "\nScanned text extract: \n" ++ scannedText
-              ]
-  where DocumentPath path = docFilepath doc
-        inferredTitle = (takeBaseName
-                      >>> reverse
-                      >>> dropWhile isAlphaNum
-                      >>> drop 1
-                      >>> reverse
-                      >>> splitOn "-"
-                      >>> map capitalize
-                      >>> unwords) path
-        tagString = unwords . map toText $ docTags doc
-        scannedText = take 200 . T.unpack
-                      $ fromMaybe "N/A" (docScannedText doc)
-
-capitalize :: String -> String
-capitalize []     = []
-capitalize (x:xs) = toUpper x : xs

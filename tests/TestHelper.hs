@@ -30,19 +30,22 @@ testOpts :: FilePath -- ^ The temp folder to use for tests
          -> Options
 testOpts tmpDir = Options {
     verbose      = False
-  , silent       = True
+  , silent       = False
   , esHost       = EsHost "http://localhost:9200"
-  , title        = DocumentTitle "doc"
+  , esIndex      = EsIndex "gratte_test"
   , folder       = GratteFolder tmpDir
-  , dryRun       = False
   , ocr          = True
   , logFilePath  = tmpDir </> "log"
   , outputFormat = DetailedFormat
-  , esIndex      = EsIndex "gratte_test"
   , pdfMode      = NoPDFMode
   , resultSize   = 100
+  -- Document
+  , title        = Right $ DocumentTitle "title"
+  , sender       = Right $ DocumentSender "sender"
+  , recipient    = Right $ DocumentRecipient "recipient"
+  , date         = Nothing
   , tags         = [Tag "tag"]
-}
+  }
 
 cleanES :: Gratte ()
 cleanES = do

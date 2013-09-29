@@ -28,14 +28,17 @@ data Options = Options
   , silent       :: Bool
   , esHost       :: EsHost
   , esIndex      :: EsIndex
-  , title        :: DocumentTitle
   , folder       :: GratteFolder
-  , dryRun       :: Bool
   , ocr          :: Bool
   , logFilePath  :: FilePath
   , outputFormat :: OutputFormat
   , pdfMode      :: PDFMode
   , resultSize   :: Int
+  -- Document
+  , title        :: Either EarlyExit DocumentTitle
+  , sender       :: Either EarlyExit DocumentSender
+  , recipient    :: Either EarlyExit DocumentRecipient
+  , date         :: Maybe DocumentDate
   , tags         :: [Tag]
   }
 
@@ -48,27 +51,30 @@ defaultOptions = do
   , silent       = False
   , esHost       = EsHost "http://localhost:9200"
   , esIndex      = EsIndex "gratte"
-  , title        = DocumentTitle "Doc"
   , folder       = defaultFolder
-  , dryRun       = False
   , ocr          = False
   , logFilePath  = "/var/log/gratte/gratte.log"
   , outputFormat = DetailedFormat
   , pdfMode      = NoPDFMode
   , resultSize   = 100
+  -- Document
+  , title        = Left $ InvalidOptions "The documents must have a title"
+  , sender       = Left $ InvalidOptions "The documents must have a sender"
+  , recipient    = Left $ InvalidOptions "The documents must have a recipient"
+  , date         = Nothing
   , tags         = []
   }
 
 data EarlyExit = UsageWithSuccess
                | InvalidOptions String
 
-options :: [OptDescr (Options -> EitherT EarlyExit IO Options)]
-options = [
+optionDescrs :: [OptDescr (Options -> EitherT EarlyExit IO Options)]
+optionDescrs = [
       Option "V" ["verbose"]
              (NoArg (\opts -> return $ opts { verbose = True, silent = False }))
              "Verbose mode"
 
-    , Option "s" ["silent"]
+    , Option "" ["silent"]
              (NoArg (\opts -> return opts { silent = True, verbose = False }))
              "Silent mode"
 
@@ -84,21 +90,9 @@ options = [
              (ReqArg (\arg opts -> return opts { esIndex = EsIndex arg }) "INDEX")
              "Elastic search index, defaults to 'gratte'"
 
-    , Option "t" ["title"]
-             (ReqArg (\arg opts -> return opts { title = DocumentTitle arg }) "TITLE")
-             "The title of the document"
-
-    , Option "T" ["tags"]
-             (ReqArg (\arg opts -> return opts { tags = map (Tag . dropWhile (==' ')) . SPL.splitOneOf ",:" $ arg }) "TAG1,TAG2")
-             "Add a comma or colon separated list of tags to the document. Only useful in add mode."
-
     , Option "" ["folder"]
              (ReqArg (\arg opts -> return opts { folder = GratteFolder arg }) "OUTPUT FOLDER")
              "The output folder. Defaults to ~/.gratte"
-
-    , Option "d" ["dry-run"]
-             (NoArg (\opts -> return opts { dryRun = True }))
-             "Run in dry mode: no files are copied and the payloads that would have been sent to ES are displayed to stdout"
 
     , Option "o" ["ocr"]
              (NoArg (\opts -> return opts { ocr = True }))
@@ -118,6 +112,26 @@ options = [
     , Option "n" ["result-size"]
              (ReqArg (\arg opts -> do s <- getResultSize arg; return opts { resultSize = s }) "SIZE")
              "The size of the result list. Defaults to 100."
+
+    , Option "t" ["title"]
+             (ReqArg (\arg opts -> return opts { title = Right (DocumentTitle arg) }) "\"TITLE\"")
+             "The title of the documents. If more than one documents are present, add a page number after it (e.g. \"My doc (Page 1)\", etc. )"
+
+    , Option "s" ["sender"]
+             (ReqArg (\arg opts -> return opts { sender = Right (DocumentSender arg) }) "NAME")
+             "The documents' sender"
+
+    , Option "r" ["recipient"]
+             (ReqArg (\arg opts -> return opts { recipient = Right (DocumentRecipient arg) }) "NAME")
+             "The documents' recipient (who these documents where addressed to)"
+
+    , Option "d" ["date"]
+             (ReqArg handleDate "MONTH YEAR")
+             ("The documents' month (optionaly) and year. If provided, the date MUST be in the form \"September 2013\".")
+
+    , Option "T" ["tags"]
+             (ReqArg (\arg opts -> return opts { tags = map (Tag . dropWhile (==' ')) . SPL.splitOneOf ",:" $ arg }) "TAG1,TAG2")
+             "Add a comma or colon separated list of tags to the document. Only useful in add mode."
   ]
 
 getResultSize :: String -> EitherT EarlyExit IO Int
@@ -130,7 +144,7 @@ usage = do
   prg <- getProgName
   let header = "Usage: " ++ prg ++ " [add file1 file2...|reindex|myquerystring]\n\n" ++
                "Options:"
-  hPutStr stderr $ usageInfo header options
+  hPutStr stderr $ usageInfo header optionDescrs
 
 handleFormat :: String -> Options -> EitherT EarlyExit IO Options
 handleFormat arg opts = do
@@ -155,3 +169,34 @@ handlePDFMode arg opts = do
   case mMode of
     Just mode -> return opts { pdfMode = mode }
     _           -> left $ InvalidOptions "Allowed value for -p : i[mage], t[ext]"
+
+handleDate :: String -> Options -> EitherT EarlyExit IO Options
+handleDate arg opts = do
+  let (monthInput, yearInput) = (\ (x, y) -> (x, drop 1 y)) . break (==' ') $ arg
+      eMonth = parseMonth monthInput
+      eYear  = parseYear yearInput
+  case (eMonth, eYear) of
+    (Left failure, _)          -> left $ InvalidOptions failure
+    (_, Left failure)          -> left $ InvalidOptions failure
+    (Right mMonth, Right year) -> return $ opts { date = Just (DocumentDate mMonth year) }
+
+parseMonth :: String -> Either String (Maybe Month)
+parseMonth "" = Right Nothing
+parseMonth (c:cs) =
+  case reads (toUpper c:cs) :: [(Month, String)] of
+    [(month, "")] -> Right $ Just month
+    _             -> Left $ "Please enter a valid month, without abbreviations"
+
+parseYear :: String -> Either String Integer
+parseYear inputYear =
+  case reads inputYear :: [(Integer, String)] of
+    [(year, "")] -> Right year
+    _            -> Left $ "Please enter a valid year"
+
+validateOptionPresence :: Options -> Either EarlyExit Options
+validateOptionPresence opts =
+  case (title opts, sender opts, recipient opts) of
+    (Left failure, _, _) -> Left failure
+    (_, Left failure, _) -> Left failure
+    (_, _, Left failure) -> Left failure
+    _                    -> Right opts

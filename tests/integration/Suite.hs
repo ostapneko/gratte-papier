@@ -35,6 +35,7 @@ main = hspec $ do
 addExampleDoc :: Gratte ()
 addExampleDoc = do
   docs <- createDocuments [exampleFile]
+  liftIO . putStrLn $ show docs
   archive $ zip [exampleFile] docs
 
 waitForIndexing :: Gratte ()

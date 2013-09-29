@@ -1,7 +1,0 @@
-- Add reindexing test
-- Add tests for PDF
-- Tweak search
-- More formatting control
-- Controllable number of results
-- Test for multi-cpu
-- Add a proper README

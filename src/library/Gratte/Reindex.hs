@@ -7,8 +7,10 @@ import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Gratte
 
+import Data.Aeson
 import Data.Maybe
 import Data.Char
+import qualified Data.ByteString.Lazy.Char8 as BS
 
 import System.FilePath
 
@@ -56,11 +58,11 @@ importFile file = do
 
 createDoc :: FilePath -> Gratte (Maybe Document)
 createDoc file = do
-  let metaDataFile = replaceExtension file "metadata"
-  metadata <- liftIO $ readFile metaDataFile
-  let parsed = reads metadata :: [(Document, String)]
+  let metaDataFile = replaceExtension file "json"
+  jsonDoc <- liftIO $ BS.readFile metaDataFile
+  let parsed = decode jsonDoc :: Maybe Document
   case parsed of
-    [(doc, _)] -> return $ Just doc
+    Just doc -> return $ Just doc
     _          -> do
       logCritical $ "Could not parse the document " ++ file
       return Nothing

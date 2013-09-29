@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Gratte.Document where
 
 import           Data.Aeson
+import           Data.Aeson.Types
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Text                  as T
 import qualified Data.List                  as L
@@ -11,62 +13,94 @@ import           Control.Applicative
 import           Control.Monad
 
 import           Gratte.Tag
+import           Gratte.TH
+
+$(mkDocField "Hash")
+$(mkDocField "Title")
+$(mkDocField "Path")
+$(mkDocField "Sender")
+$(mkDocField "Recipient")
+
+data Month = January | February | March | April | May | June | July
+           | August | September | October | November | December
+           deriving (Show, Read)
+instance ToJSON Month where
+  toJSON = toJSON . show
+instance FromJSON Month where
+  parseJSON (String m) =
+    case reads (T.unpack m) of
+      [(month, "")] -> return month
+      _             -> mzero
+  parseJSON _ = mzero
+
+
+data DocumentDate = DocumentDate (Maybe Month) Integer deriving Show
+instance ToJSON DocumentDate where
+  toJSON (DocumentDate mMonth year) =
+    object $ [ "month" .= toJSON mMonth
+             , "year"  .= toJSON year
+             ]
+
+instance FromJSON DocumentDate where
+  parseJSON (Object v) = do
+    DocumentDate <$> v .:? "month"
+                 <*> v .: "year"
+  parseJSON _ = mzero
+
+docDateToString :: DocumentDate -> String
+docDateToString (DocumentDate mMonth year) =
+  let monthString = case mMonth of
+        Nothing -> ""
+        Just month -> show month ++ " "
+  in monthString ++ show year
 
 data Document = Document {
     docHash        :: DocumentHash
   , docTitle       :: DocumentTitle
-  , docFilepath    :: DocumentPath
+  , docPath        :: DocumentPath
+  , docSender      :: DocumentSender
+  , docRecipient   :: DocumentRecipient
+  , docDate        :: Maybe DocumentDate
   , docTags        :: [Tag]
   , docScannedText :: Maybe T.Text
-  } deriving (Show, Read)
-
-newtype DocumentPath = DocumentPath String deriving (Show, Read)
-instance ToJSON DocumentPath where
-  toJSON (DocumentPath p) = toJSON $ T.pack p
-
-instance FromJSON DocumentPath where
-  parseJSON (String p) = return $ DocumentPath $ T.unpack p
-  parseJSON _          = mzero
-
-documentPathToString :: DocumentPath -> String
-documentPathToString (DocumentPath p) = p
-
-newtype DocumentTitle = DocumentTitle String deriving (Show, Read)
-instance ToJSON DocumentTitle where
-  toJSON (DocumentTitle t) = toJSON $ T.pack t
-
-instance FromJSON DocumentTitle where
-  parseJSON (String t) = return $ DocumentTitle $ T.unpack t
-  parseJSON _          = mzero
-
-newtype DocumentHash = DocumentHash String deriving (Show, Read)
-
-instance ToJSON DocumentHash where
-  toJSON (DocumentHash h) = toJSON $ T.pack h
-
-instance FromJSON DocumentHash where
-  parseJSON (String h) = return $ DocumentHash $ T.unpack h
-  parseJSON _          = mzero
+  } deriving Show
 
 instance ToJSON Document where
-  toJSON (Document _ (DocumentTitle title) (DocumentPath fp) ts ft) =
-    object [
-        "filepath"  .= String (T.pack fp)
-      , "title"     .= String (T.pack title)
-      , "tags"      .= toJSON ts
-      , "free_text" .= toJSON ft
-      ]
+  toJSON doc =
+    object $ [ "hash"        .= docHash doc
+             , "title"       .= docTitle doc
+             , "path"        .= docPath doc
+             , "sender"      .= docSender doc
+             , "recipient"   .= docRecipient doc
+             , "date"        .= docDate doc
+             , "tags"        .= docTags doc
+             , "scannedText" .= docScannedText doc
+             ]
 
 toPayload :: Document -> String
 toPayload = BS.unpack . encode . toJSON
 
 instance FromJSON Document where
-  parseJSON (Object v) =
-    Document <$> v .: "_id"
-             <*> (v .: "_source" >>= (.: "filepath"))
-             <*> (v .: "_source" >>= (.: "title"))
-             <*> (v .: "_source" >>= (.: "tags"))
-             <*> (v .: "_source" >>= (.:? "free_text"))
+  parseJSON (Object v) = do
+    source      <- v .: "_source" :: Parser Object
+    hash        <- source .: "hash"
+    title       <- source .: "title"
+    path        <- source .: "path"
+    sender      <- source .: "sender"
+    recipient   <- source .: "recipient"
+    date        <- source .: "date"
+    tags        <- source .: "tags"
+    scannedText <- source .: "scannedText"
+    return Document
+      { docHash        = hash
+      , docTitle       = title
+      , docPath        = path
+      , docSender      = sender
+      , docRecipient   = recipient
+      , docDate        = date
+      , docTags        = tags
+      , docScannedText = scannedText
+      }
   parseJSON _          = mzero
 
 data SearchResult = SearchResult Hits
@@ -87,10 +121,13 @@ createReport docs =
 
 describeDoc :: Document -> String
 describeDoc doc =
-  let (DocumentTitle title) = docTitle doc
-      tags = docTags doc
-      text = maybe "(no scanned text)" T.unpack $ docScannedText doc
+  let  text = maybe "(no scanned text)" T.unpack $ docScannedText doc
+       tags = docTags doc
+       date = maybe "(no date)" docDateToString $ docDate doc
   in "--------------------------------\n"
-     ++ "Title: " ++ title ++ "\n"
-     ++ "Tags: " ++ L.intercalate ", " (map toText tags) ++ "\n"
-     ++ "Scanned text: " ++ text ++ "\n"
+    ++ "Title: "        ++ docTitleToString (docTitle doc)         ++ "\n"
+    ++ "Sender: "       ++ docSenderToString (docSender doc)       ++ "\n"
+    ++ "Recipient: "    ++ docRecipientToString (docRecipient doc) ++ "\n"
+    ++ "Date: "         ++ date                                    ++ "\n"
+    ++ "Tags: "         ++ L.intercalate ", " (map toText tags)    ++ "\n"
+    ++ "Scanned text: " ++ text                                    ++ "\n"
