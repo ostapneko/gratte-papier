@@ -42,7 +42,6 @@ importFiles = do
   GratteFolder f <- getOption folder
   logNotice $ "Starting file imports from folder: " ++ f ++ " ..."
   files <- liftIO $ (filter notMetadata) `liftM` getFilesRecurs f
-  mapM_ (liftIO . putStrLn) files
   mapM_ importFile files
   logNotice $ show (length files) ++ " files imported successfully."
 
@@ -64,7 +63,6 @@ createDoc file = do
   if (metadataExist)
     then do
       jsonDoc <- liftIO $ BS.readFile metadataFile
-      liftIO $ print jsonDoc
       let parsed = decode jsonDoc :: Maybe Document
       case parsed of
         Just doc -> return $ Just doc

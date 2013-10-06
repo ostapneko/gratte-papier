@@ -119,15 +119,15 @@ optionDescrs = [
              "The title of the documents. If more than one documents are present, add a page number after it (e.g. \"My doc (Page 1)\", etc. )"
 
     , Option "s" ["sender"]
-             (ReqArg (\arg opts -> return opts { sender = Right (DocumentSender arg) }) "NAME")
+             (ReqArg (\arg opts -> return opts { sender = Right (DocumentSender arg) }) "\"NAME\"")
              "The documents' sender"
 
     , Option "r" ["recipient"]
-             (ReqArg (\arg opts -> return opts { recipient = Right (DocumentRecipient arg) }) "NAME")
+             (ReqArg (\arg opts -> return opts { recipient = Right (DocumentRecipient arg) }) "\"NAME\"")
              "The documents' recipient (who these documents where addressed to)"
 
     , Option "d" ["date"]
-             (ReqArg handleDate "MONTH YEAR")
+             (ReqArg handleDate "\"MONTH YEAR\"")
              ("The documents' month (optionaly) and year. If provided, the date MUST be in the form \"September 2013\".")
 
     , Option "T" ["tags"]
