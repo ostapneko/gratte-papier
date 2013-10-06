@@ -24,22 +24,14 @@ main = do
   defaultOptions' <- defaultOptions
   eOpts <- runEitherT $  L.foldl' (>>=) (right defaultOptions') actions
   case eOpts of
-    Right opts -> case (validateOptionPresence opts) of
-      Left (InvalidOptions msg) -> do
-        hPutStrLn stderr $ "Error while trying to validate the document: " ++ msg
-        exitFailure
-      _ -> withGratte opts $ do
-        setupLogger
-        case (params, errors) of
-          ("add":files, []) -> do
-            documents <- Add.createDocuments files
-            liftIO . putStrLn $ createReport documents
-            confirmation <- liftIO $ askForConfirmation True
-            when (confirmation) (Add.archive (zip files documents))
-          (["reindex"], []) -> Reindex.reindex
-          ([]         , []) -> liftIO usage
-          (files      , []) -> Search.searchDocs $ unwords files
-          _                 -> mapM_ logCritical errors
+    Right opts -> withGratte opts $ do
+      setupLogger
+      case (params, errors) of
+        ("add":files, []) -> addFiles opts files
+        (["reindex"], []) -> Reindex.reindex
+        ([]         , []) -> liftIO usage
+        (files      , []) -> Search.searchDocs $ unwords files
+        _                 -> mapM_ logCritical errors
     Left UsageWithSuccess -> usage >> exitSuccess
     Left (InvalidOptions msg) -> do
       hPutStrLn stderr $ "Error while parsing the options: " ++ msg
@@ -58,3 +50,16 @@ askForConfirmation isFirstTime = do
     "y" -> return True
     "n" -> return False
     _   -> askForConfirmation False
+
+addFiles :: Options -> [String] -> Gratte ()
+addFiles opts files = do
+  case (validateOptionPresence opts) of
+      Left (InvalidOptions msg) -> liftIO $ do
+        hPutStrLn stderr $ "Error while trying to validate the document: " ++ msg
+        exitFailure
+      _ -> do
+        documents <- Add.createDocuments files
+        GratteFolder gratteFolder <- getOption folder
+        liftIO . putStrLn $ createReport gratteFolder documents
+        confirmation <- liftIO $ askForConfirmation True
+        when (confirmation) (Add.archive (zip files documents))

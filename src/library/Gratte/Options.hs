@@ -67,6 +67,7 @@ defaultOptions = do
 
 data EarlyExit = UsageWithSuccess
                | InvalidOptions String
+               deriving Show
 
 optionDescrs :: [OptDescr (Options -> EitherT EarlyExit IO Options)]
 optionDescrs = [
@@ -171,14 +172,21 @@ handlePDFMode arg opts = do
     _           -> left $ InvalidOptions "Allowed value for -p : i[mage], t[ext]"
 
 handleDate :: String -> Options -> EitherT EarlyExit IO Options
-handleDate arg opts = do
-  let (monthInput, yearInput) = (\ (x, y) -> (x, drop 1 y)) . break (==' ') $ arg
-      eMonth = parseMonth monthInput
-      eYear  = parseYear yearInput
-  case (eMonth, eYear) of
-    (Left failure, _)          -> left $ InvalidOptions failure
-    (_, Left failure)          -> left $ InvalidOptions failure
-    (Right mMonth, Right year) -> return $ opts { date = Just (DocumentDate mMonth year) }
+handleDate arg opts =
+  case parseDate arg of
+    Left failure -> left failure
+    Right mDate -> return $ opts { date = mDate }
+
+parseDate :: String -> Either EarlyExit (Maybe DocumentDate)
+parseDate arg =
+  let (lhs, rhs) = (\ (x, y) -> (x, drop 1 y)) . break (==' ') $ arg
+      (eMonth, eYear) = case (lhs, rhs) of
+        (_, "") -> (Right Nothing, parseYear lhs)
+        _       -> (parseMonth lhs, parseYear rhs)
+  in case (eMonth, eYear) of
+    (Left failure, _)          -> Left $ InvalidOptions failure
+    (_, Left failure)          -> Left $ InvalidOptions failure
+    (Right mMonth, Right year) -> Right $ Just (DocumentDate mMonth year)
 
 parseMonth :: String -> Either String (Maybe Month)
 parseMonth "" = Right Nothing

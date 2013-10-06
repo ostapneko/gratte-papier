@@ -4,8 +4,6 @@
 module Gratte.Document where
 
 import           Data.Aeson
-import           Data.Aeson.Types
-import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Text                  as T
 import qualified Data.List                  as L
 
@@ -77,20 +75,16 @@ instance ToJSON Document where
              , "scannedText" .= docScannedText doc
              ]
 
-toPayload :: Document -> String
-toPayload = BS.unpack . encode . toJSON
-
 instance FromJSON Document where
   parseJSON (Object v) = do
-    source      <- v .: "_source" :: Parser Object
-    hash        <- source .: "hash"
-    title       <- source .: "title"
-    path        <- source .: "path"
-    sender      <- source .: "sender"
-    recipient   <- source .: "recipient"
-    date        <- source .: "date"
-    tags        <- source .: "tags"
-    scannedText <- source .: "scannedText"
+    hash        <- v .: "hash"
+    title       <- v .: "title"
+    path        <- v .: "path"
+    sender      <- v .: "sender"
+    recipient   <- v .: "recipient"
+    date        <- v .: "date"
+    tags        <- v .: "tags"
+    scannedText <- v .: "scannedText"
     return Document
       { docHash        = hash
       , docTitle       = title
@@ -103,29 +97,40 @@ instance FromJSON Document where
       }
   parseJSON _          = mzero
 
+newtype DocumentPayload = DocumentPayload Document deriving (Show)
+instance ToJSON DocumentPayload where
+  toJSON (DocumentPayload doc) = toJSON doc
+instance FromJSON DocumentPayload where
+  parseJSON (Object v) = do
+    source <- v .: "_source"
+    doc <- parseJSON source
+    return $ DocumentPayload doc
+  parseJSON _ = mzero
+
 data SearchResult = SearchResult Hits
 instance FromJSON SearchResult where
   parseJSON (Object v) = SearchResult <$> v .: "hits"
   parseJSON _          = mzero
 
-data Hits = Hits [Document]
+data Hits = Hits [DocumentPayload]
 instance FromJSON Hits where
   parseJSON (Object v) = Hits <$> v .: "hits"
   parseJSON _          = mzero
 
-createReport :: [Document] -> String
-createReport docs =
+createReport :: FilePath -> [Document] -> String
+createReport folder docs =
   let firstLine = "You are about to archive the following files:"
-      docDescriptions = map describeDoc docs
+      docDescriptions = map (describeDoc folder) docs
   in unlines $ firstLine : docDescriptions
 
-describeDoc :: Document -> String
-describeDoc doc =
+describeDoc :: FilePath -> Document -> String
+describeDoc folder doc =
   let  text = maybe "(no scanned text)" T.unpack $ docScannedText doc
        tags = docTags doc
        date = maybe "(no date)" docDateToString $ docDate doc
   in "--------------------------------\n"
     ++ "Title: "        ++ docTitleToString (docTitle doc)         ++ "\n"
+    ++ "Path: "         ++ folder ++ docPathToString (docPath doc) ++ "\n"
     ++ "Sender: "       ++ docSenderToString (docSender doc)       ++ "\n"
     ++ "Recipient: "    ++ docRecipientToString (docRecipient doc) ++ "\n"
     ++ "Date: "         ++ date                                    ++ "\n"

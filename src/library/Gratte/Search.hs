@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Gratte.Search (
-  searchDocs
+module Gratte.Search
+  ( searchDocs
   , getDocs
   ) where
 
@@ -39,10 +39,10 @@ getDocs queryText = do
       unless (x == 2) $ do
         logError $ "ES failure code returned: " ++ show x ++ show y ++ show z
       case decode (BS.pack body) of
-        Nothing -> logAndReturnEmpty $ "Parsing of the results from ES failed"
+        Nothing       -> logAndReturnEmpty $ "Parsing of the results from ES failed"
         Just jsonBody -> case fromJSON jsonBody of
           Error err -> logAndReturnEmpty $ "JSON object parsing failed: " ++ err
-          Success (SearchResult (Hits docs)) -> return docs
+          Success (SearchResult (Hits docPayloads)) -> return $ map (\ (DocumentPayload doc) -> doc) docPayloads
 
 logAndReturnEmpty :: String -> Gratte [Document]
 logAndReturnEmpty msg = do
@@ -52,8 +52,8 @@ logAndReturnEmpty msg = do
 outputDoc :: Document -> Gratte ()
 outputDoc doc = do
   format <- getOption outputFormat
+  GratteFolder gratteFolder <- getOption folder
   liftIO $ case format of
-    CompactFormat -> putStrLn . docPathToString . docPath $ doc
+    CompactFormat  -> putStrLn . docPathToString . docPath $ doc
     DetailedFormat -> do
-      putStrLn $ describeDoc doc
-      putStrLn "---------------------"
+      putStrLn $ describeDoc gratteFolder doc

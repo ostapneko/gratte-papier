@@ -1,6 +1,5 @@
-module Gratte.Reindex (
-  reindex
-  , getHash
+module Gratte.Reindex
+  ( reindex
   ) where
 
 import Control.Monad
@@ -9,10 +8,10 @@ import Control.Monad.Gratte
 
 import Data.Aeson
 import Data.Maybe
-import Data.Char
 import qualified Data.ByteString.Lazy.Char8 as BS
 
 import System.FilePath
+import System.Directory
 
 import Network.HTTP
 import Network.URI
@@ -30,7 +29,8 @@ reindex = do
 deleteIndex :: Gratte ()
 deleteIndex = do
   EsHost h <- getOption esHost
-  let url = h </> "gratte" </> "document"
+  EsIndex i <- getOption esIndex
+  let url = h </> i </> "document"
   let uri = fromJust $ parseURI url
   result <- liftIO . simpleHTTP $ mkRequest DELETE uri
   case result of
@@ -42,11 +42,12 @@ importFiles = do
   GratteFolder f <- getOption folder
   logNotice $ "Starting file imports from folder: " ++ f ++ " ..."
   files <- liftIO $ (filter notMetadata) `liftM` getFilesRecurs f
+  mapM_ (liftIO . putStrLn) files
   mapM_ importFile files
   logNotice $ show (length files) ++ " files imported successfully."
 
 notMetadata :: FilePath -> Bool
-notMetadata file = takeExtension file /= ".metadata"
+notMetadata file = takeExtension file /= ".json"
 
 importFile :: FilePath -> Gratte ()
 importFile file = do
@@ -58,18 +59,18 @@ importFile file = do
 
 createDoc :: FilePath -> Gratte (Maybe Document)
 createDoc file = do
-  let metaDataFile = replaceExtension file "json"
-  jsonDoc <- liftIO $ BS.readFile metaDataFile
-  let parsed = decode jsonDoc :: Maybe Document
-  case parsed of
-    Just doc -> return $ Just doc
-    _          -> do
-      logCritical $ "Could not parse the document " ++ file
+  let metadataFile = replaceExtension file "json"
+  metadataExist <- liftIO $ doesFileExist metadataFile
+  if (metadataExist)
+    then do
+      jsonDoc <- liftIO $ BS.readFile metadataFile
+      liftIO $ print jsonDoc
+      let parsed = decode jsonDoc :: Maybe Document
+      case parsed of
+        Just doc -> return $ Just doc
+        _          -> do
+          logCritical $ "Could not parse the document " ++ metadataFile
+          return Nothing
+    else do
+      logError $ "Could not find metadata for file: " ++ file
       return Nothing
-
--- foo/bar/a/2/3/4/doc-5678 -> a2345678
-getHash :: FilePath -> String
-getHash fp =
-  let (fileName:dirs) = take 4 . reverse . splitDirectories . dropExtension $ fp
-      fileNameNoPrefix = reverse . takeWhile isAlphaNum . reverse $ fileName
-  in  concat $ reverse dirs ++ [fileNameNoPrefix]

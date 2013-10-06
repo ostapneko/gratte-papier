@@ -57,16 +57,15 @@ createDocument :: Maybe Int -- ^ The page number
 createDocument mPage path = do
   opts      <- getOptions
   hash      <- liftIO getHash
-  gratteDir <- getOption folder
   mText     <- extractText path
   let titleString   = either (error "Options should have a title") docTitleToString (title opts)
   let sender'       = either (error "Options should have a sender") id (sender opts)
   let recipient'    = either (error "Options should have a recipient") id (recipient opts)
   let titleWithPage = case mPage of
-        Nothing -> titleString
+        Nothing   -> titleString
         Just page -> titleString ++ " (Page " ++ show page ++ ")"
       prefix = makePrefix (DocumentTitle titleWithPage)
-      targetPath  = toTargetPath gratteDir hash prefix path
+      targetPath  = toTargetPath hash prefix path
   return $ Document {
              docHash        = hash
            , docTitle       = DocumentTitle titleWithPage
@@ -90,15 +89,14 @@ getHash = do
   let timeStamp = show (s * 1000000000000 + ps)
   return $ DocumentHash $ md5s $ Str timeStamp
 
-toTargetPath :: GratteFolder
-             -> DocumentHash
+toTargetPath :: DocumentHash
              -> Prefix
              -> FilePath
              -> FilePath
-toTargetPath (GratteFolder dir) (DocumentHash hash) (Prefix prf) f =
+toTargetPath (DocumentHash hash) (Prefix prf) f =
   let ext          = takeExtension f
       (a:b:c:rest) = hash
-  in dir
+  in "/"
      </> [a] </> [b] </> [c]
      </> prf ++ "-" ++ rest ++ ext
 
@@ -106,7 +104,9 @@ copyToRepo :: FilePath -- ^ The path to the original file
            -> Document -- ^ The 'Document' representation of the file
            -> Gratte ()
 copyToRepo file doc = do
-  let DocumentPath newFile = docPath doc
+  let DocumentPath newFileRelPath = docPath doc
+  GratteFolder gratteFolder <- getOption folder
+  let newFile = gratteFolder ++ newFileRelPath
   let dir = takeDirectory newFile
   logDebug $ "\tCopy " ++ file ++ " to " ++ newFile
   liftIO $ do
@@ -121,8 +121,8 @@ sendToES doc = do
   (EsIndex i) <- getOption esIndex
   let (DocumentHash docId) = docHash doc
   let url                  = h </> i </> "document" </> docId
-  let payload              = toPayload doc
-  logDebug $ "\tSending payload: " ++ toPayload doc
+  let payload              = BS.unpack . encode $ DocumentPayload doc
+  logDebug $ "\tSending payload: " ++ payload
   _ <- liftIO . simpleHTTP $ postRequestWithBody url "application/json" payload
   return ()
 

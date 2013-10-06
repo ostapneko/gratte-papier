@@ -5,14 +5,18 @@ import Control.Monad.Trans
 import System.FilePath
 import System.IO
 
+import Network.HTTP
+
 import Test.Hspec
 import TestHelper
 
-import Gratte.Document
 import Gratte.Add
+import Gratte.Document
+import Gratte.Options
+import Gratte.Reindex  (reindex)
 import Gratte.Search   (getDocs)
-import Gratte.Utils    (getFilesRecurs)
 import Gratte.Tag
+import Gratte.Utils    (getFilesRecurs)
 
 main :: IO ()
 main = hspec $ do
@@ -23,12 +27,23 @@ main = hspec $ do
           withGratte opts $ do
             cleanES
             addExampleDoc
-            waitForIndexing
+            refreshIndex
             copiedDocSize' <- getCopiedDocSize tmpDir
             searchedDoc'   <- getDocs "hspec"
             return (copiedDocSize', searchedDoc')
 
       assertFileCopy copiedDocSize
+      assertSearchSuccess searchedDoc
+
+  describe "Reindex" $ do
+    it "Regenerate the ES index" $ do
+      searchedDoc <- inTestContext $ \ opts _ -> do
+        withGratte opts $ do
+          cleanES
+          addExampleDoc
+          reindex
+          refreshIndex
+          getDocs "hspec"
       assertSearchSuccess searchedDoc
 
 
@@ -38,8 +53,13 @@ addExampleDoc = do
   liftIO . putStrLn $ show docs
   archive $ zip [exampleFile] docs
 
-waitForIndexing :: Gratte ()
-waitForIndexing = liftIO $ threadDelay 2000000
+refreshIndex :: Gratte ()
+refreshIndex = do
+  EsHost h <- getOption esHost
+  EsIndex i <- getOption esIndex
+  let url = h </> i </> "_refresh"
+  _ <- liftIO $ simpleHTTP (postRequest url)
+  return ()
 
 getCopiedDocSize :: FilePath -> Gratte Integer
 getCopiedDocSize tmpDir = liftIO $ do
