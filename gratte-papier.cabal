@@ -36,6 +36,34 @@ executable gratte-papier
                      , unix
                      , vector
 
+executable gratte-migrate
+  ghc-options:       -Wall -threaded
+  main-is:           Migrate.hs
+  hs-source-dirs:    src/executable
+                     src/library
+  build-depends:     base
+                     , HTTP
+                     , MissingH
+                     , aeson
+                     , attoparsec
+                     , bytestring
+                     , directory
+                     , either
+                     , filepath
+                     , hslogger
+                     , mtl
+                     , network
+                     , old-time
+                     , process
+                     , split
+                     , system-fileio
+                     , system-filepath
+                     , template-haskell
+                     , temporary
+                     , text
+                     , unix
+                     , vector
+
 test-suite integration
   type:              exitcode-stdio-1.0
   main-is:           Suite.hs
