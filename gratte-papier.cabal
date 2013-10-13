@@ -13,8 +13,7 @@ cabal-version:       >=1.8
 executable gratte-papier
   ghc-options:       -Wall -threaded
   main-is:           Main.hs
-  hs-source-dirs:    src/executable
-                     src/library
+  hs-source-dirs:    src
   build-depends:     base
                      , HTTP
                      , MissingH
@@ -40,7 +39,7 @@ test-suite integration
   type:              exitcode-stdio-1.0
   main-is:           Suite.hs
   hs-source-dirs:    tests/integration
-                     , src/library
+                     , src
                      , tests/
 
   build-depends:     base
