@@ -1,11 +1,13 @@
-import Control.Concurrent
+{-# LANGUAGE OverloadedStrings #-}
+
 import Control.Monad.Gratte
 import Control.Monad.Trans
 
-import System.FilePath
-import System.IO
+import qualified Filesystem                as FS
+import qualified Filesystem.Path.CurrentOS as FS
 
 import Network.HTTP
+import Network.URI
 
 import Test.Hspec
 import TestHelper
@@ -24,11 +26,12 @@ main = hspec $ do
     it "Adds a document and allows for its search" $ do
       (copiedDocSize, searchedDoc) <- do
         inTestContext $ \ opts tmpDir -> do
-          withGratte opts $ do
+          withGratte (opts { optCommand = addCommand }) $ do
             cleanES
             addExampleDoc
             refreshIndex
-            copiedDocSize' <- getCopiedDocSize tmpDir
+          withGratte (opts { optCommand = searchCommand }) $ do
+            copiedDocSize' <- getCopiedDocSize $ FS.decodeString tmpDir
             searchedDoc'   <- getDocs "hspec"
             return (copiedDocSize', searchedDoc')
 
@@ -38,12 +41,13 @@ main = hspec $ do
   describe "Reindex" $ do
     it "Regenerate the ES index" $ do
       searchedDoc <- inTestContext $ \ opts _ -> do
-        withGratte opts $ do
+        withGratte (opts { optCommand = addCommand }) $ do
           cleanES
           addExampleDoc
+        withGratte (opts { optCommand = ReindexCmd }) $ do
           reindex
           refreshIndex
-          getDocs "hspec"
+        withGratte (opts { optCommand = searchCommand }) (getDocs "hspec")
       assertSearchSuccess searchedDoc
 
 
@@ -57,29 +61,23 @@ refreshIndex :: Gratte ()
 refreshIndex = do
   EsHost h <- getOption esHost
   EsIndex i <- getOption esIndex
-  let url = h </> i </> "_refresh"
-  _ <- liftIO $ simpleHTTP (postRequest url)
+  let url = h { uriPath = i ++ "/_refresh" }
+  _ <- liftIO $ simpleHTTP $ (mkRequest POST url :: Request String)
   return ()
 
-getCopiedDocSize :: FilePath -> Gratte Integer
+getCopiedDocSize :: FS.FilePath -> Gratte Integer
 getCopiedDocSize tmpDir = liftIO $ do
   files <- getFilesRecurs tmpDir
-  let file = head $ filter ((== ".png") . takeExtensions) files
-  fileSize <- liftIO $ getFileSize file
+  let file = head $ filter ((== Just "png") . FS.extension) files
+  fileSize <- liftIO $ FS.getSize file
   return fileSize
 
 assertFileCopy :: Integer -> Expectation
 assertFileCopy actSize = do
-  expSize <- liftIO $ getFileSize exampleFile
+  expSize <- liftIO $ FS.getSize exampleFile
   actSize `shouldBe` expSize
 
 assertSearchSuccess :: [Document] -> Expectation
 assertSearchSuccess docs = do
   length docs `shouldBe` 1
   docTags (head docs) `shouldBe` [Tag "tag"]
-
-getFileSize :: FilePath -> IO Integer
-getFileSize file = withFile file ReadMode hFileSize
-
-exampleFile :: FilePath
-exampleFile = "tests" </> "integration" </> "resources" </> "example.png"

@@ -9,14 +9,17 @@ import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Gratte
 
-import           System.FilePath
-
-import           Network.HTTP
 import           Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BS
 
-import Gratte.Options
-import Gratte.Document
+import qualified Filesystem.Path.CurrentOS as FS
+
+import           Network.HTTP
+import           Network.URI
+
+import           Gratte.Document
+import           Gratte.Options
+import           Gratte.Utils
 
 searchDocs :: String -> Gratte ()
 searchDocs queryText = do
@@ -27,11 +30,14 @@ getDocs :: String -> Gratte [Document]
 getDocs queryText = do
   EsHost h  <- getOption esHost
   EsIndex i <- getOption esIndex
-  size      <- getOption resultSize
+  size      <- getSearchOption resultSize
+  let uriPath' = "/" ++ i ++ "/document/_search"
   let queryString = "?q=" ++ (urlEncode queryText) ++ "&size=" ++ (show size)
-  let url = h </> i </> "document" </> "_search" ++ queryString
+
+  let uri = h { uriPath = uriPath' , uriQuery = queryString }
+
   logDebug $ "Querying for '" ++ queryText ++ "'"
-  result <- liftIO . simpleHTTP $ getRequest url
+  result <- liftIO . simpleHTTP $ mkRequest GET uri
 
   case result of
     Left err -> logAndReturnEmpty $ "An error happened when connecting to ES: " ++ show err
@@ -51,9 +57,12 @@ logAndReturnEmpty msg = do
 
 outputDoc :: Document -> Gratte ()
 outputDoc doc = do
-  format <- getOption outputFormat
-  GratteFolder gratteFolder <- getOption folder
+  format <- getSearchOption outputFormat
+  docFolder <- getOption folder
   liftIO $ case format of
-    CompactFormat  -> putStrLn . docPathToString . docPath $ doc
-    DetailedFormat -> do
-      putStrLn $ describeDoc gratteFolder doc
+    OutputFormatCompact  -> do
+      let DocumentPath relPath = docPath doc
+          fullPath = docFolder <//> relPath
+      putStrLn $ FS.encodeString fullPath
+    OutputFormatDetailed -> do
+      putStrLn $ describeDoc docFolder doc

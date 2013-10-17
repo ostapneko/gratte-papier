@@ -1,32 +1,37 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Gratte.Add
   ( archive
   , sendToES
   , createDocuments
   ) where
 
-import Control.Monad
-import Control.Monad.Trans
-import Control.Monad.Gratte
+import           Control.Monad
+import           Control.Monad.Gratte
+import           Control.Monad.Trans
 
-import Data.Aeson
-import Data.Char
+import           Data.Aeson
+import           Data.Char
 import qualified Data.ByteString.Lazy.Char8 as BS
 
-import System.FilePath
-import System.Directory
-import System.Time
+import           System.Time
 
-import Network.HTTP
+import qualified Filesystem                 as FS
+import qualified Filesystem.Path.CurrentOS  as FS
 
-import qualified Data.List     as L
+import           Network.HTTP
+import           Network.URI
+
 import           Data.Hash.MD5
+import qualified Data.List                  as L
 
-import Gratte.Options
-import Gratte.Document
-import Gratte.TextExtractor (extractText)
+import           Gratte.Document
+import           Gratte.Options
+import           Gratte.TextExtractor (extractText)
+import           Gratte.Utils
 
 -- | Add several documents with the same tags
-archive :: [(FilePath, Document)] -> Gratte ()
+archive :: [(FS.FilePath, Document)] -> Gratte ()
 archive pairs = do
   let docs = map snd pairs
   logStartAddingFiles docs
@@ -34,7 +39,7 @@ archive pairs = do
   logDoneAddingFiles docs
 
 -- | Add a single file with multiple tags
-processFile :: FilePath -> Document -> Gratte ()
+processFile :: FS.FilePath -> Document -> Gratte ()
 processFile f doc = do
   -- copy file
   copyToRepo f doc
@@ -44,44 +49,43 @@ processFile f doc = do
 -- | Create a list of docuements from filepaths
 -- If there are more than one document, their title
 -- and file name contain the page number
-createDocuments :: [FilePath] -> Gratte [Document]
-createDocuments [path] = do doc <- createDocument Nothing path; return [doc]
+createDocuments :: [FS.FilePath] -> Gratte [Document]
+createDocuments [file] = do
+  doc <- createDocument Nothing file
+  return [doc]
 createDocuments paths  = do
   let pageAndPath = zip [1..] paths
-  forM pageAndPath $ \ (page, path) -> createDocument (Just page) path
+  forM pageAndPath $ \ (page, file) -> createDocument (Just page) file
 
 -- | Create a document. It doesn't persist it.
 createDocument :: Maybe Int -- ^ The page number
-               -> FilePath  -- ^ The path to the original document
+               -> FS.FilePath  -- ^ The path to the original document
                -> Gratte Document
-createDocument mPage path = do
-  opts      <- getOptions
+createDocument mPage file = do
+  addOpts   <- getAddOptions
   hash      <- liftIO getHash
-  mText     <- extractText path
-  let titleString   = either (error "Options should have a title") docTitleToString (title opts)
-  let sender'       = either (error "Options should have a sender") id (sender opts)
-  let recipient'    = either (error "Options should have a recipient") id (recipient opts)
+  mText     <- extractText file
+  let DocumentTitle titleString = title addOpts
   let titleWithPage = case mPage of
         Nothing   -> titleString
         Just page -> titleString ++ " (Page " ++ show page ++ ")"
       prefix = makePrefix (DocumentTitle titleWithPage)
-      targetPath  = toTargetPath hash prefix path
+      targetPath = toTargetPath hash prefix file
   return $ Document {
              docHash        = hash
            , docTitle       = DocumentTitle titleWithPage
            , docPath        = DocumentPath targetPath
-           , docSender      = sender'
-           , docRecipient   = recipient'
-           , docDate        = date opts
-           , docTags        = tags opts
+           , docSender      = sender addOpts
+           , docRecipient   = recipient addOpts
+           , docDate        = date addOpts
+           , docTags        = tags addOpts
            , docScannedText = mText
            }
 
-makePrefix :: DocumentTitle -> Prefix
+makePrefix :: DocumentTitle -> String
 makePrefix (DocumentTitle t) =
-    let prf =  filter isAscii . map (replaceSpaces . toLower) $ t
-    in Prefix prf
-  where replaceSpaces c = if (isSpace c) then '-' else c
+  filter isAscii . map (replaceSpaces . toLower) $ t
+    where replaceSpaces c = if (isSpace c) then '-' else c
 
 getHash :: IO DocumentHash
 getHash = do
@@ -90,29 +94,29 @@ getHash = do
   return $ DocumentHash $ md5s $ Str timeStamp
 
 toTargetPath :: DocumentHash
-             -> Prefix
-             -> FilePath
-             -> FilePath
-toTargetPath (DocumentHash hash) (Prefix prf) f =
-  let ext          = takeExtension f
-      (a:b:c:rest) = hash
-  in "/"
-     </> [a] </> [b] </> [c]
-     </> prf ++ "-" ++ rest ++ ext
+             -> String
+             -> FS.FilePath
+             -> FS.FilePath
+toTargetPath (DocumentHash hash) prf f =
+  let ext                 = maybe "" id $ FS.extension f
+      (a:b:c:rest)        = hash
+      [a', b', c'] = map FS.decodeString [[a], [b], [c]]
+  in "/" <//> a' <//> b' <//> c'
+     <//> (FS.decodeString (prf ++ "-" ++ rest) `FS.addExtension` ext)
 
-copyToRepo :: FilePath -- ^ The path to the original file
-           -> Document -- ^ The 'Document' representation of the file
+copyToRepo :: FS.FilePath -- ^ The path to the original file
+           -> Document    -- ^ The 'Document' representation of the file
            -> Gratte ()
 copyToRepo file doc = do
   let DocumentPath newFileRelPath = docPath doc
-  GratteFolder gratteFolder <- getOption folder
-  let newFile = gratteFolder ++ newFileRelPath
-  let dir = takeDirectory newFile
-  logDebug $ "\tCopy " ++ file ++ " to " ++ newFile
+  docFolder <- getOption folder
+  let newFile = docFolder <//> newFileRelPath
+  let dir = FS.directory newFile
+  logDebug $ "\tCopy " ++ (FS.encodeString file) ++ " to " ++ (FS.encodeString newFile)
   liftIO $ do
-    createDirectoryIfMissing True dir
-    copyFile file newFile
-    let metadataFile = replaceExtension newFile "json"
+    FS.createTree dir
+    FS.copyFile file newFile
+    let metadataFile = FS.encodeString $ FS.replaceExtension newFile "json"
     BS.writeFile metadataFile $ encode doc
 
 sendToES :: Document -> Gratte ()
@@ -120,10 +124,11 @@ sendToES doc = do
   (EsHost h)  <- getOption esHost
   (EsIndex i) <- getOption esIndex
   let (DocumentHash docId) = docHash doc
-  let url                  = h </> i </> "document" </> docId
+  let url                  = h { uriPath = i ++ "/document/" ++ docId }
   let payload              = BS.unpack . encode $ DocumentPayload doc
   logDebug $ "\tSending payload: " ++ payload
-  _ <- liftIO . simpleHTTP $ postRequestWithBody url "application/json" payload
+  let req = setRequestBody (mkRequest POST url) ("application/json", payload)
+  _ <- liftIO . simpleHTTP $ req
   return ()
 
 logStartAddingFiles :: [Document] -> Gratte ()

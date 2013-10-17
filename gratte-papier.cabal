@@ -20,15 +20,16 @@ executable gratte-papier
                      , aeson
                      , attoparsec
                      , bytestring
-                     , directory
                      , either
-                     , filepath
                      , hslogger
                      , mtl
                      , network
                      , old-time
+                     , optparse-applicative
                      , process
                      , split
+                     , system-fileio
+                     , system-filepath
                      , template-haskell
                      , temporary
                      , text
@@ -49,16 +50,17 @@ test-suite integration
                      , aeson
                      , attoparsec
                      , bytestring
-                     , directory
                      , either
-                     , filepath
                      , hslogger
                      , hspec
                      , mtl
                      , network
                      , old-time
+                     , optparse-applicative
                      , process
                      , split
+                     , system-fileio
+                     , system-filepath
                      , template-haskell
                      , temporary
                      , text

@@ -2,6 +2,8 @@ module Control.Monad.Gratte
   ( Gratte(..)
   , withGratte
   , getOptions, getOption
+  , getAddOptions, getAddOption
+  , getSearchOptions, getSearchOption
   , logMsg
   , logDebug
   , logInfo
@@ -14,12 +16,12 @@ module Control.Monad.Gratte
   , setupLogger
   ) where
 
-import Control.Monad
-import Control.Monad.Trans
+import           Control.Monad
+import           Control.Monad.Trans
 
-import System.Log.GratteLogger
+import           System.Log.GratteLogger
 
-import Gratte.Options
+import           Gratte.Options
 
 data Gratte a = Gratte { gratte :: Options -> IO a }
 
@@ -41,6 +43,27 @@ getOptions = Gratte return
 
 getOption :: (Options -> a) -> Gratte a
 getOption getter = getter `liftM` getOptions
+
+getAddOptions :: Gratte AddOptions
+getAddOptions = do
+  cmd <- getOption optCommand
+  case cmd of
+    AddCmd addOpts -> return addOpts
+    _              -> error $ "Trying to access add options while given the command: " ++ show cmd
+
+
+getAddOption :: (AddOptions -> a) -> Gratte a
+getAddOption getter = getter `liftM` getAddOptions
+
+getSearchOptions :: Gratte SearchOptions
+getSearchOptions = do
+  cmd <- getOption optCommand
+  case cmd of
+    SearchCmd searchOpts -> return searchOpts
+    _              -> error $ "Trying to access search options while given the command: " ++ show cmd
+
+getSearchOption :: (SearchOptions -> a) -> Gratte a
+getSearchOption getter = getter `liftM` getSearchOptions
 
 logMsg :: LogLevel -> String -> Gratte ()
 logMsg lvl msg = liftIO $ logMsgIO lvl msg
@@ -73,9 +96,9 @@ setupLogger :: Gratte ()
 setupLogger = do
   opts <- getOptions
   let path = logFilePath opts
-  let level = case (verbose opts, silent opts) of
-                (True, _) -> Debug
-                (_, True) -> Critical
-                _         -> Notice
+  let level = case verbosity opts of
+                VerbositySilent  -> Critical
+                VerbosityNormal  -> Notice
+                VerbosityVerbose -> Debug
   let settings = LoggerSettings path level
   liftIO $ configureLogger settings
