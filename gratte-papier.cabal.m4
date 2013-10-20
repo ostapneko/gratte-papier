@@ -42,3 +42,4 @@ test-suite integration
                      , tests/
 
   build-depends:     COMMON_DEPS
+                   , hspec

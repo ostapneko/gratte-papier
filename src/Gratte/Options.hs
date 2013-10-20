@@ -82,42 +82,52 @@ defaultEsHost = EsHost $ URI
   , uriFragment = ""
   }
 
+defaultOptions = Options
+  { verbosity = VerbosityNormal
+  , esHost = defaultEsHost
+  , esIndex = EsIndex "gratte"
+  , folder = FS.decodeString "/var/gratte"
+  , logFilePath = FS.decodeString "/var/log/gratte/gratte.log"
+  , optCommand = error "Command not set in the options"
+  }
+
 parseOptions :: Parser Options
 parseOptions = Options
            <$> nullOption
                ( long "verbosity"
               <> short 'v'
               <> metavar "VERBOSITY"
-              <> value VerbosityNormal
+              <> value (verbosity defaultOptions)
               <> help "the output verbosity from 0 (silent) to 2 (verbose)"
               <> reader parseVerbosity )
            <*> nullOption
                ( long "es-host"
               <> metavar "HOST"
-              <> value defaultEsHost
+              <> value (esHost defaultOptions)
               <> help "The ElasticSearch server hostname"
               <> reader parseEsHost )
            <*> nullOption
                ( long "es-index"
               <> metavar "NAME"
-              <> value (EsIndex "gratte")
+              <> value (esIndex defaultOptions)
               <> help "The index for the documents in ElasticSearch"
               <> reader parseEsIndex )
            <*> nullOption
                ( long "folder"
               <> metavar "PATH"
-              <> value (FS.decodeString "/var/gratte")
+              <> value (folder defaultOptions)
               <> help "The directory used to store the documents and their metadata"
               <> reader parsePath )
            <*> nullOption
                ( long "log-file"
               <> metavar "PATH"
-              <> value (FS.decodeString "/var/log/gratte/gratte.log")
+              <> value (logFilePath defaultOptions)
               <> help "The log file"
               <> reader parsePath )
            <*> subparser
                  ( command "add" addParserInfo
-                <> command "search" searchParserInfo)
+                <> command "search" searchParserInfo
+                <> command "reindex" reindexParserInfo)
 
 
 searchParserInfo :: ParserInfo Command
@@ -185,6 +195,9 @@ parseAddOptions = AddOptions
               <*> arguments (\ s -> FS.decodeString `liftM` str s)
                  ( help "Files to add"
                 <> metavar "FILES" )
+
+reindexParserInfo :: ParserInfo Command
+reindexParserInfo = info (helper <*> pure ReindexCmd) fullDesc
 
 parseVerbosity :: Monad m => String -> m Verbosity
 parseVerbosity "0" = return VerbositySilent

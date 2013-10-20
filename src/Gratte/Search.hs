@@ -47,7 +47,7 @@ getDocs queryText = do
       case decode (BS.pack body) of
         Nothing       -> logAndReturnEmpty $ "Parsing of the results from ES failed"
         Just jsonBody -> case fromJSON jsonBody of
-          Error err -> logAndReturnEmpty $ "JSON object parsing failed: " ++ err
+          Error err -> logAndReturnEmpty $ "JSON object parsing failed: " ++ err ++ ". Original body: " ++ body
           Success (SearchResult (Hits docPayloads)) -> return $ map (\ (DocumentPayload doc) -> doc) docPayloads
 
 logAndReturnEmpty :: String -> Gratte [Document]

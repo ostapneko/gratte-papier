@@ -47,7 +47,7 @@ importFiles = do
   logNotice $ show (length files) ++ " files imported successfully."
 
 notMetadata :: FS.FilePath -> Bool
-notMetadata file = FS.extension file /= Just ".json"
+notMetadata file = FS.extension file /= Just "json"
 
 importFile :: FS.FilePath -> Gratte ()
 importFile file = do

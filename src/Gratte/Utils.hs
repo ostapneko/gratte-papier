@@ -15,7 +15,8 @@ getFilesRecurs f = do
     True  -> return [f]
     False -> do
       children <- FS.listDirectory f
-      grandChildren <- mapM getFilesRecurs children
+      let children' = filter (not . null . FS.encodeString . FS.basename) children
+      grandChildren <- mapM getFilesRecurs children'
       return $ concat grandChildren
 
 -- | Like Filesystem.Path.append, but remove the second path's
