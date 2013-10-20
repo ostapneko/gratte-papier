@@ -6,7 +6,6 @@ module System.GratteExternalCommands
   ) where
 
 import System.Process
-import System.FilePath
 import System.Exit
 
 execTesseract :: FilePath -> FilePath -> IO (ExitCode, String)
@@ -23,7 +22,7 @@ execConvert file tempDir = do
   (exitCode, _, err) <- do
     readProcessWithExitCode
       "convert"
-      [file, tempDir </> "temp-png.png"]
+      [file, tempDir ++ "/temp-png.png"]
       ""
   return (exitCode, err)
 

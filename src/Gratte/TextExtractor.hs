@@ -4,49 +4,39 @@ module Gratte.TextExtractor
   ( extractText
   ) where
 
-import Control.Monad
-import Control.Monad.Gratte
-import Control.Monad.Trans
+import           Control.Monad
+import           Control.Monad.Gratte
+import           Control.Monad.Trans
 
 import qualified Data.Text    as T
 import qualified Data.Text.IO as TIO
-import qualified Data.List    as L
 
-import System.IO.Temp
-import System.Exit
-import System.FilePath
-import System.Directory
-import System.GratteExternalCommands
+import           System.Exit
+import           System.GratteExternalCommands
+import           System.IO.Temp
 
-import Gratte.Options
+import qualified Filesystem                as FS
+import qualified Filesystem.Path.CurrentOS as FS
+
+import           Gratte.Options
+import           Gratte.Utils
 
 type TextExtractor = FilePath -> FilePath -> Gratte (Maybe T.Text)
 
-extractText :: FilePath -> Gratte (Maybe T.Text)
+extractText :: FS.FilePath -> Gratte (Maybe T.Text)
 extractText file = do
-  hasOcr <- getOption ocr
-  pdfM   <- getOption pdfMode
-  let ext = takeExtension file
+  hasOcr <- getAddOption ocr
+  pdfM   <- getAddOption pdfMode
+  let ext = FS.extension file
   opts   <- getOptions
-  liftIO $ withSystemTempDirectory "ocr-text" $ \tempDir -> do
+  let filePath = FS.encodeString file
+  liftIO $ withSystemTempDirectory "ocr-text" $ \ tempDir -> do
     withGratte opts $
       case (ext, pdfM, hasOcr) of
-        (".pdf", NoPDFMode   , False) -> handleNoPDFModeNoOCR
-        (".pdf", NoPDFMode   , True ) -> handleNoPDFModeWithOCR tempDir file
-        (".pdf", ImagePDFMode, _    ) -> extractPDFImage tempDir file
-        (".pdf", TextPDFMode , _    ) -> extractPDFText tempDir file
-        (_     , _           , False) -> return Nothing
-        (_     , _           , True ) -> extractImage tempDir file
-
-handleNoPDFModeNoOCR :: Gratte (Maybe T.Text)
-handleNoPDFModeNoOCR = do
-  logWarning "PDF file found but no PDF mode specified and no OCR... Assuming no text is to be extracted from the PDF."
-  return Nothing
-
-handleNoPDFModeWithOCR :: TextExtractor
-handleNoPDFModeWithOCR tempDir file = do
-  logWarning "PDF file found with OCR but no PDF mode specified... Fallback to image mode"
-  extractPDFImage tempDir file
+        (Just ".pdf", PDFModeImage, _    ) -> extractPDFImage tempDir filePath
+        (Just ".pdf", PDFModeText , _    ) -> extractPDFText tempDir filePath
+        (_          , _           , False) -> return Nothing
+        (_          , _           , True ) -> extractImage tempDir filePath
 
 extractImage :: TextExtractor
 extractImage tempDir file = do
@@ -70,25 +60,26 @@ extractPDFImage tempDir file = do
     (exitCode, err) <- execConvert file tempDir
     withGratte opts $ do
       case exitCode of
-        ExitSuccess   -> extractSingleImage tempDir
+        ExitSuccess   -> extractSingleImage (FS.decodeString tempDir)
         ExitFailure _ -> do
           logError $ "Could not convert the PDF file to image: " ++ file
           logError err
           return Nothing
 
-extractSingleImage :: FilePath -> Gratte (Maybe T.Text)
+extractSingleImage :: FS.FilePath -> Gratte (Maybe T.Text)
 extractSingleImage tempDir = do
-  let singleImage = tempDir </> "single-image.png"
+  let singleImage = tempDir <//> "single-image.png"
   opts <- getOptions
   liftIO $ do
-    imagesBaseNames <- filter (L.isSuffixOf ".png") `liftM` (getDirectoryContents tempDir)
-    let images = map (\ n -> tempDir </> n) imagesBaseNames
-    (exitCode, err) <- execConvertAppend images singleImage
+    imagesBaseNames <- filter (`FS.hasExtension` "png") `liftM` (FS.listDirectory tempDir)
+    let imagePaths = map (\ n -> FS.encodeString $ tempDir <//> n) imagesBaseNames
+        singleImagePath = FS.encodeString singleImage
+    (exitCode, err) <- execConvertAppend imagePaths singleImagePath
     withGratte opts $ do
       case exitCode of
-        ExitSuccess   -> extractImage tempDir singleImage
+        ExitSuccess   -> extractImage (FS.encodeString tempDir) singleImagePath
         ExitFailure _ -> do
-          logError $ "Could OCR the image: " ++ singleImage
+          logError $ "Could OCR the image: " ++ singleImagePath
           logError err
           return Nothing
 

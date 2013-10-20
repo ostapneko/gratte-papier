@@ -1,16 +1,24 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module TestHelper
   ( inTestContext
   , cleanES
+  , addCommand
+  , searchCommand
+  , exampleFile
   ) where
 
 import Control.Monad.Gratte
 import Control.Monad.Trans
 
-import System.FilePath
+import Data.Monoid
+
 import System.IO.Temp
 
+import qualified Filesystem.Path.CurrentOS as FS
+
 import Network.HTTP
-import Network.URI
+import Network.URI hiding (query)
 
 import Gratte.Document
 import Gratte.Options
@@ -28,37 +36,44 @@ inTestContext f = do
 -- to be cleaned up, and an ES test index
 testOpts :: FilePath -- ^ The temp folder to use for tests
          -> Options
-testOpts tmpDir = Options {
-    verbose      = False
-  , silent       = False
-  , esHost       = EsHost "http://localhost:9200"
-  , esIndex      = EsIndex "gratte_test"
-  , folder       = GratteFolder tmpDir
-  , ocr          = True
-  , logFilePath  = tmpDir </> "log"
-  , outputFormat = DetailedFormat
-  , pdfMode      = NoPDFMode
-  , resultSize   = 100
-  -- Document
-  , title        = Right $ DocumentTitle "title"
-  , sender       = Right $ DocumentSender "sender"
-  , recipient    = Right $ DocumentRecipient "recipient"
-  , date         = Nothing
-  , tags         = [Tag "tag"]
+testOpts tmpDir = Options
+  { verbosity   = VerbositySilent
+  , esHost      = defaultEsHost
+  , esIndex     = EsIndex "gratte_test"
+  , folder      = FS.decodeString tmpDir
+  , logFilePath = FS.decodeString tmpDir <> "temp.log"
+  , optCommand  = error "Command not set"
+  }
+
+exampleFile :: FS.FilePath
+exampleFile = mconcat ["tests", "integration", "resources", "example.png"]
+
+addCommand :: Command
+addCommand = AddCmd $ AddOptions
+  { pdfMode   = PDFModeText
+  , ocr       = True
+  , title     = DocumentTitle "title"
+  , sender    = DocumentSender "sender"
+  , recipient = DocumentRecipient "recipient"
+  , date      = DocumentDate Nothing 2013
+  , tags      = [Tag "tag"]
+  , newFiles  = [exampleFile]
+  }
+
+searchCommand :: Command
+searchCommand = SearchCmd $ SearchOptions
+  { outputFormat = OutputFormatCompact
+  , resultSize   = 20
+  , query        = "hspec"
   }
 
 cleanES :: Gratte ()
 cleanES = do
-  (EsHost esHost')   <- getOption esHost
-  (EsIndex esIndex') <- getOption esIndex
-  let url = esHost' </> esIndex'
-  let mURI = parseURI url
-  case mURI of
-    Nothing -> do
-      logCritical $ "Malformed URL: " ++ url
-    Just uri -> do
-      let request = mkRequest DELETE uri :: Request String
-      res <- liftIO . simpleHTTP $ request
-      case res of
-        Left _  -> logCritical "Error trying to delete the index"
-        Right _ -> return ()
+  EsHost esHost'   <- getOption esHost
+  EsIndex esIndex' <- getOption esIndex
+  let url = esHost' { uriPath = esIndex' }
+  let request = mkRequest DELETE url :: Request String
+  res <- liftIO . simpleHTTP $ request
+  case res of
+    Left _  -> logCritical "Error trying to delete the index"
+    Right _ -> return ()

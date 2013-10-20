@@ -1,15 +1,12 @@
 import           Control.Monad
 import           Control.Monad.Gratte
 import           Control.Monad.Trans
-import           Control.Monad.Trans.Either
 
 import           Data.Char
-import qualified Data.List             as L
 
-import           System.Console.GetOpt
-import           System.Environment
-import           System.Exit
-import           System.IO
+import qualified Filesystem.Path.CurrentOS as FS
+
+import           Options.Applicative
 
 import           Gratte.Options
 import           Gratte.Document
@@ -19,24 +16,14 @@ import qualified Gratte.Reindex         as Reindex
 
 main :: IO ()
 main = do
-  args <- getArgs
-  let (actions, params, errors) = getOpt Permute optionDescrs args
-  defaultOptions' <- defaultOptions
-  eOpts <- runEitherT $  L.foldl' (>>=) (right defaultOptions') actions
-  case eOpts of
-    Right opts -> withGratte opts $ do
-      setupLogger
-      case (params, errors) of
-        ("add":files, []) -> addFiles opts files
-        (["reindex"], []) -> Reindex.reindex
-        ([]         , []) -> liftIO usage
-        (files      , []) -> Search.searchDocs $ unwords files
-        _                 -> mapM_ logCritical errors
-    Left UsageWithSuccess -> usage >> exitSuccess
-    Left (InvalidOptions msg) -> do
-      hPutStrLn stderr $ "Error while parsing the options: " ++ msg
-      usage
-      exitFailure
+  let optDescrs = info (helper <*> parseOptions) fullDesc
+  opts <- execParser optDescrs
+  withGratte opts $ do
+    setupLogger
+    case optCommand opts of
+      AddCmd addOpts       -> addFiles $ newFiles addOpts
+      ReindexCmd           -> Reindex.reindex
+      SearchCmd searchOpts -> Search.searchDocs $ query searchOpts
 
 askForConfirmation :: Bool    -- ^ Is it the first time we ask the question ?
                    -> IO Bool
@@ -51,15 +38,10 @@ askForConfirmation isFirstTime = do
     "n" -> return False
     _   -> askForConfirmation False
 
-addFiles :: Options -> [String] -> Gratte ()
-addFiles opts files = do
-  case (validateOptionPresence opts) of
-      Left (InvalidOptions msg) -> liftIO $ do
-        hPutStrLn stderr $ "Error while trying to validate the document: " ++ msg
-        exitFailure
-      _ -> do
-        documents <- Add.createDocuments files
-        GratteFolder gratteFolder <- getOption folder
-        liftIO . putStrLn $ createReport gratteFolder documents
-        confirmation <- liftIO $ askForConfirmation True
-        when (confirmation) (Add.archive (zip files documents))
+addFiles :: [FS.FilePath] -> Gratte ()
+addFiles files = do
+  documents <- Add.createDocuments files
+  docFolder <- getOption folder
+  liftIO . putStrLn $ createReport docFolder documents
+  confirmation <- liftIO $ askForConfirmation True
+  when (confirmation) (Add.archive (zip files documents))

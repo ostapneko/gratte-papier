@@ -5,14 +5,14 @@ module System.Log.GratteLogger (
   , LogLevel(..)
   ) where
 
-import System.Log.Logger
-import System.Log.Handler.Simple
-import System.Log.Handler        (setFormatter)
-import System.Log.Formatter
-import System.IO
-import System.Environment
-import System.Directory
-import System.FilePath
+import           System.Log.Logger
+import           System.Log.Handler.Simple
+import           System.Log.Handler        (setFormatter)
+import           System.Log.Formatter
+import           System.IO
+import           System.Environment
+import qualified Filesystem                as FS
+import qualified Filesystem.Path.CurrentOS as FS
 
 data LogLevel = Debug
               | Info
@@ -25,18 +25,19 @@ data LogLevel = Debug
               deriving (Show, Eq)
 
 logLevelToPriority :: LogLevel -> Priority
-logLevelToPriority lvl = case lvl of
-  Debug     -> DEBUG
-  Info      -> INFO
-  Notice    -> NOTICE
-  Warning   -> WARNING
-  Error     -> ERROR
-  Critical  -> CRITICAL
-  Alert     -> ALERT
-  Emergency -> EMERGENCY
+logLevelToPriority lvl =
+  case lvl of
+    Debug     -> DEBUG
+    Info      -> INFO
+    Notice    -> NOTICE
+    Warning   -> WARNING
+    Error     -> ERROR
+    Critical  -> CRITICAL
+    Alert     -> ALERT
+    Emergency -> EMERGENCY
 
 data LoggerSettings = LoggerSettings {
-    loggerPath  :: FilePath
+    loggerPath  :: FS.FilePath
   , loggerLevel :: LogLevel
 }
 
@@ -50,7 +51,7 @@ configureLogger (LoggerSettings path level) = do
   prg           <- getProgName
   -- Everything is logged to the file
   createLogDir path
-  logFileHandler <- fileHandler path DEBUG
+  logFileHandler <- fileHandler (FS.encodeString path) DEBUG
   -- Console logging depends on the verbosity in the options
   consoleHandler <- streamHandler stderr $ logLevelToPriority level
   updateGlobalLogger rootLoggerName
@@ -62,7 +63,5 @@ configureLogger (LoggerSettings path level) = do
 getFormatter :: String -> LogFormatter (GenericHandler Handle)
 getFormatter prg = simpleLogFormatter $ "[$utcTime] [$prio] [" ++ prg ++ "] $msg"
 
-createLogDir :: FilePath -> IO ()
-createLogDir path = do
-  let folder = takeDirectory path
-  createDirectoryIfMissing True folder
+createLogDir :: FS.FilePath -> IO ()
+createLogDir path = FS.createTree $ FS.directory path

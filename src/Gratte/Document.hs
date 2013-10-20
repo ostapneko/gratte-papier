@@ -10,27 +10,41 @@ import qualified Data.List                  as L
 import           Control.Applicative
 import           Control.Monad
 
+import qualified Filesystem.Path.CurrentOS as FS
+
 import           Gratte.Tag
 import           Gratte.TH
 
 $(mkDocField "Hash")
 $(mkDocField "Title")
-$(mkDocField "Path")
 $(mkDocField "Sender")
 $(mkDocField "Recipient")
+
+newtype DocumentPath = DocumentPath FS.FilePath deriving Show
+
+instance ToJSON DocumentPath where
+  toJSON (DocumentPath path) = toJSON . FS.encodeString $ path
+
+instance FromJSON DocumentPath where
+  parseJSON (String path) = return $ DocumentPath $ FS.fromText path
+  parseJSON _ = mzero
+
+docPathToString :: DocumentPath -> String
+docPathToString (DocumentPath path) = FS.encodeString path
 
 data Month = January | February | March | April | May | June | July
            | August | September | October | November | December
            deriving (Show, Read)
+
 instance ToJSON Month where
   toJSON = toJSON . show
+
 instance FromJSON Month where
   parseJSON (String m) =
     case reads (T.unpack m) of
       [(month, "")] -> return month
       _             -> mzero
   parseJSON _ = mzero
-
 
 data DocumentDate = DocumentDate (Maybe Month) Integer deriving Show
 instance ToJSON DocumentDate where
@@ -58,7 +72,7 @@ data Document = Document {
   , docPath        :: DocumentPath
   , docSender      :: DocumentSender
   , docRecipient   :: DocumentRecipient
-  , docDate        :: Maybe DocumentDate
+  , docDate        :: DocumentDate
   , docTags        :: [Tag]
   , docScannedText :: Maybe T.Text
   } deriving Show
@@ -117,22 +131,23 @@ instance FromJSON Hits where
   parseJSON (Object v) = Hits <$> v .: "hits"
   parseJSON _          = mzero
 
-createReport :: FilePath -> [Document] -> String
-createReport folder docs =
+createReport :: FS.FilePath -> [Document] -> String
+createReport docFolder docs =
   let firstLine = "You are about to archive the following files:"
-      docDescriptions = map (describeDoc folder) docs
+      docDescriptions = map (describeDoc docFolder) docs
   in unlines $ firstLine : docDescriptions
 
-describeDoc :: FilePath -> Document -> String
-describeDoc folder doc =
+describeDoc :: FS.FilePath -> Document -> String
+describeDoc docFolder doc =
   let  text = maybe "(no scanned text)" T.unpack $ docScannedText doc
        tags = docTags doc
-       date = maybe "(no date)" docDateToString $ docDate doc
+       date = docDateToString $ docDate doc
+       docFolder' = FS.encodeString docFolder
   in "--------------------------------\n"
-    ++ "Title: "        ++ docTitleToString (docTitle doc)         ++ "\n"
-    ++ "Path: "         ++ folder ++ docPathToString (docPath doc) ++ "\n"
-    ++ "Sender: "       ++ docSenderToString (docSender doc)       ++ "\n"
-    ++ "Recipient: "    ++ docRecipientToString (docRecipient doc) ++ "\n"
-    ++ "Date: "         ++ date                                    ++ "\n"
-    ++ "Tags: "         ++ L.intercalate ", " (map toText tags)    ++ "\n"
-    ++ "Scanned text: " ++ text                                    ++ "\n"
+    ++ "Title: "        ++ docTitleToString (docTitle doc)             ++ "\n"
+    ++ "Path: "         ++ docFolder' ++ docPathToString (docPath doc) ++ "\n"
+    ++ "Sender: "       ++ docSenderToString (docSender doc)           ++ "\n"
+    ++ "Recipient: "    ++ docRecipientToString (docRecipient doc)     ++ "\n"
+    ++ "Date: "         ++ date                                        ++ "\n"
+    ++ "Tags: "         ++ L.intercalate ", " (map toText tags)        ++ "\n"
+    ++ "Scanned text: " ++ text                                        ++ "\n"

@@ -4,15 +4,16 @@ define(`COMMON_DEPS', `base
                      , aeson
                      , attoparsec
                      , bytestring
-                     , directory
                      , either
-                     , filepath
                      , hslogger
                      , mtl
                      , network
                      , old-time
+                     , optparse-applicative
                      , process
                      , split
+                     , system-fileio
+                     , system-filepath
                      , template-haskell
                      , temporary
                      , text

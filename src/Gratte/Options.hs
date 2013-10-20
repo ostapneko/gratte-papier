@@ -1,192 +1,228 @@
-module Gratte.Options (
-  module Gratte.Options
+module Gratte.Options
+  ( Options(..)
+  , AddOptions(..)
+  , SearchOptions(..)
+  , defaultEsHost
+  , EsHost(..)
+  , EsIndex(..)
+  , PDFMode(..)
+  , OutputFormat(..)
+  , Verbosity(..)
+  , Command(..)
+  , parseOptions
   ) where
 
-import           Control.Monad.Trans.Either
-
-import           System.Console.GetOpt
-import           System.Directory
-import           System.Environment
-import           System.IO
+import           Control.Monad
 
 import           Data.Char
 import qualified Data.List.Split as SPL
 
+import qualified Filesystem.Path.CurrentOS as FS
+
+import           Network.URI
+
+import           Options.Applicative
+
 import           Gratte.Tag
 import           Gratte.Document
 
-newtype EsHost  = EsHost String
-newtype EsIndex = EsIndex String
-newtype Prefix  = Prefix String
-newtype GratteFolder = GratteFolder FilePath
+newtype EsHost   = EsHost URI     deriving Show
+newtype EsIndex  = EsIndex String deriving Show
 
-data PDFMode      = NoPDFMode | ImagePDFMode | TextPDFMode
-data OutputFormat = CompactFormat | DetailedFormat
+data PDFMode = PDFModeImage
+             | PDFModeText
+             deriving Show
 
-data Options = Options
-  { verbose      :: Bool
-  , silent       :: Bool
-  , esHost       :: EsHost
-  , esIndex      :: EsIndex
-  , folder       :: GratteFolder
-  , ocr          :: Bool
-  , logFilePath  :: FilePath
-  , outputFormat :: OutputFormat
-  , pdfMode      :: PDFMode
-  , resultSize   :: Int
-  -- Document
-  , title        :: Either EarlyExit DocumentTitle
-  , sender       :: Either EarlyExit DocumentSender
-  , recipient    :: Either EarlyExit DocumentRecipient
-  , date         :: Maybe DocumentDate
-  , tags         :: [Tag]
-  }
+data OutputFormat = OutputFormatCompact
+                  | OutputFormatDetailed
+                  deriving Show
 
-defaultOptions :: IO Options
-defaultOptions = do
-  homeDir <- getHomeDirectory
-  let defaultFolder = GratteFolder $  homeDir ++ "/.gratte"
-  return Options {
-    verbose      = False
-  , silent       = False
-  , esHost       = EsHost "http://localhost:9200"
-  , esIndex      = EsIndex "gratte"
-  , folder       = defaultFolder
-  , ocr          = False
-  , logFilePath  = "/var/log/gratte/gratte.log"
-  , outputFormat = DetailedFormat
-  , pdfMode      = NoPDFMode
-  , resultSize   = 100
-  -- Document
-  , title        = Left $ InvalidOptions "The documents must have a title"
-  , sender       = Left $ InvalidOptions "The documents must have a sender"
-  , recipient    = Left $ InvalidOptions "The documents must have a recipient"
-  , date         = Nothing
-  , tags         = []
-  }
-
-data EarlyExit = UsageWithSuccess
-               | InvalidOptions String
+data Verbosity = VerbositySilent
+               | VerbosityNormal
+               | VerbosityVerbose
                deriving Show
 
-optionDescrs :: [OptDescr (Options -> EitherT EarlyExit IO Options)]
-optionDescrs = [
-      Option "V" ["verbose"]
-             (NoArg (\opts -> return $ opts { verbose = True, silent = False }))
-             "Verbose mode"
+data Command = AddCmd     AddOptions
+             | ReindexCmd
+             | SearchCmd  SearchOptions
+             deriving Show
 
-    , Option "" ["silent"]
-             (NoArg (\opts -> return opts { silent = True, verbose = False }))
-             "Silent mode"
+data AddOptions = AddOptions
+  { pdfMode   :: PDFMode
+  , ocr       :: Bool
+  , title     :: DocumentTitle
+  , sender    :: DocumentSender
+  , recipient :: DocumentRecipient
+  , date      :: DocumentDate
+  , tags      :: [Tag]
+  , newFiles  :: [FS.FilePath]
+  } deriving Show
 
-    , Option "h" ["help"]
-             (NoArg (\_ -> left UsageWithSuccess))
-             "Show help"
+data SearchOptions = SearchOptions
+  { outputFormat :: OutputFormat
+  , resultSize   :: Int
+  , query        :: String
+  } deriving Show
 
-    , Option "e" ["es-host"]
-             (ReqArg (\arg opts -> return opts { esHost = EsHost arg }) "HOST")
-             "Elastic search host and port, defaults to http://localhost:9200"
+data Options = Options
+  { verbosity   :: Verbosity
+  , esHost      :: EsHost
+  , esIndex     :: EsIndex
+  , folder      :: FS.FilePath
+  , logFilePath :: FS.FilePath
+  , optCommand  :: Command
+  } deriving Show
 
-    , Option "" ["es-index"]
-             (ReqArg (\arg opts -> return opts { esIndex = EsIndex arg }) "INDEX")
-             "Elastic search index, defaults to 'gratte'"
+defaultEsHost :: EsHost
+defaultEsHost = EsHost $ URI
+  { uriScheme = "http:"
+  , uriAuthority = Just $ URIAuth "" "localhost" ":9200"
+  , uriPath = ""
+  , uriQuery = ""
+  , uriFragment = ""
+  }
 
-    , Option "" ["folder"]
-             (ReqArg (\arg opts -> return opts { folder = GratteFolder arg }) "OUTPUT FOLDER")
-             "The output folder. Defaults to ~/.gratte"
+parseOptions :: Parser Options
+parseOptions = Options
+           <$> nullOption
+               ( long "verbosity"
+              <> short 'v'
+              <> metavar "VERBOSITY"
+              <> value VerbosityNormal
+              <> help "the output verbosity from 0 (silent) to 2 (verbose)"
+              <> reader parseVerbosity )
+           <*> nullOption
+               ( long "es-host"
+              <> metavar "HOST"
+              <> value defaultEsHost
+              <> help "The ElasticSearch server hostname"
+              <> reader parseEsHost )
+           <*> nullOption
+               ( long "es-index"
+              <> metavar "NAME"
+              <> value (EsIndex "gratte")
+              <> help "The index for the documents in ElasticSearch"
+              <> reader parseEsIndex )
+           <*> nullOption
+               ( long "folder"
+              <> metavar "PATH"
+              <> value (FS.decodeString "/var/gratte")
+              <> help "The directory used to store the documents and their metadata"
+              <> reader parsePath )
+           <*> nullOption
+               ( long "log-file"
+              <> metavar "PATH"
+              <> value (FS.decodeString "/var/log/gratte/gratte.log")
+              <> help "The log file"
+              <> reader parsePath )
+           <*> subparser
+                 ( command "add" addParserInfo
+                <> command "search" searchParserInfo)
 
-    , Option "o" ["ocr"]
-             (NoArg (\opts -> return opts { ocr = True }))
-             "Uses OCR to try extract the text from the documents and add it as searchable metadata. Requires tesseract to be installed."
 
-    , Option "" ["log--file"]
-             (ReqArg (\arg opts -> return opts { logFilePath = arg }) "PATH")
-             "The log file. Defaults to /var/log/gratte/gratte.log"
+searchParserInfo :: ParserInfo Command
+searchParserInfo = info (helper <*> (SearchCmd <$> parseSearchOptions)) fullDesc
 
-    , Option "f" ["format"]
-             (ReqArg handleFormat "c[ompact]|d[etail]")
-             "The output format in query mode. 'compact' will spit the file paths. 'detail' spits results in human-readable format. Defaults to 'detail'."
-    , Option "p" ["pdf-mode"]
-             (ReqArg handlePDFMode "i[mage]|t[text]")
-             "The text recognition mode for PDF files, when used in conjonction with -o. '-p image' will consider the pdf as an image, while '-p text' will treat the PDF as text. This option is mandatory if you are scanning at least one PDF file with OCR."
+parseSearchOptions :: Parser SearchOptions
+parseSearchOptions = SearchOptions
+                 <$> flag OutputFormatDetailed OutputFormatCompact
+                     ( long "compact"
+                    <> short 'c'
+                    <> help "Just output file names" )
+                 <*> option
+                     ( long "result-size"
+                    <> short 'n'
+                    <> metavar "N"
+                    <> value 20
+                    <> help "The number of returned results" )
+                 <*> argument str
+                     ( help "Search query"
+                    <> metavar "QUERY" )
 
-    , Option "n" ["result-size"]
-             (ReqArg (\arg opts -> do s <- getResultSize arg; return opts { resultSize = s }) "SIZE")
-             "The size of the result list. Defaults to 100."
+addParserInfo :: ParserInfo Command
+addParserInfo = info (helper <*> (AddCmd <$> parseAddOptions)) fullDesc
 
-    , Option "t" ["title"]
-             (ReqArg (\arg opts -> return opts { title = Right (DocumentTitle arg) }) "\"TITLE\"")
-             "The title of the documents. If more than one documents are present, add a page number after it (e.g. \"My doc (Page 1)\", etc. )"
+parseAddOptions :: Parser AddOptions
+parseAddOptions = AddOptions
+              <$> flag PDFModeImage PDFModeText
+                  ( long "text-pdf"
+                 <> help "Use this switch if the document to add is a PDF and not an image (copy-pastable text)" )
+              <*> flag False True
+                  ( long "ocr"
+                 <> short 'o'
+                 <> help "Uses OCR to try extract the text from the documents and add it as searchable metadata. Requires tesseract to be installed." )
+              <*> nullOption
+                  ( long "title"
+                 <> short 't'
+                 <> metavar "TITLE"
+                 <> help "The title of the documents. If more than one documents are present, add a page number after it (e.g. \"My doc (Page 1)\", etc. )"
+                 <> reader parseTitle )
+              <*> nullOption
+                  ( long "sender"
+                 <> short 's'
+                 <> metavar "NAME"
+                 <> help "The document's sender"
+                 <> reader parseSender )
+              <*> nullOption
+                  ( long "recipient"
+                 <> short 'r'
+                 <> metavar "NAME"
+                 <> help "The document's recipient"
+                 <> reader parseRecipient )
+              <*> nullOption
+                  ( long "date"
+                 <> short 'd'
+                 <> metavar "\"MONTH YEAR\""
+                 <> help "The documents' month (optionaly) and year. If provided, the date MUST be in the form \"September 2013\"."
+                 <> reader parseDate )
+              <*> nullOption
+                  ( long "tags"
+                 <> short 'T'
+                 <> metavar "TAG1,TAG2"
+                 <> value []
+                 <> help "Add a comma or colon separated list of tags to the document"
+                 <> reader parseTags )
+              <*> arguments (\ s -> FS.decodeString `liftM` str s)
+                 ( help "Files to add"
+                <> metavar "FILES" )
 
-    , Option "s" ["sender"]
-             (ReqArg (\arg opts -> return opts { sender = Right (DocumentSender arg) }) "\"NAME\"")
-             "The documents' sender"
+parseVerbosity :: Monad m => String -> m Verbosity
+parseVerbosity "0" = return VerbositySilent
+parseVerbosity "1" = return VerbosityNormal
+parseVerbosity "2" = return VerbosityVerbose
+parseVerbosity _   = fail "The verbosity should be 0, 1 or 2"
 
-    , Option "r" ["recipient"]
-             (ReqArg (\arg opts -> return opts { recipient = Right (DocumentRecipient arg) }) "\"NAME\"")
-             "The documents' recipient (who these documents where addressed to)"
+parseEsHost :: Monad m => String -> m EsHost
+parseEsHost input =
+  case parseAbsoluteURI input of
+    Just uri -> return $ EsHost uri
+    _        -> fail "The EsHost must be a valid absolute URI"
 
-    , Option "d" ["date"]
-             (ReqArg handleDate "\"MONTH YEAR\"")
-             ("The documents' month (optionaly) and year. If provided, the date MUST be in the form \"September 2013\".")
+parseEsIndex :: Monad m => String -> m EsIndex
+parseEsIndex = return . EsIndex
 
-    , Option "T" ["tags"]
-             (ReqArg (\arg opts -> return opts { tags = map (Tag . dropWhile (==' ')) . SPL.splitOneOf ",:" $ arg }) "TAG1,TAG2")
-             "Add a comma or colon separated list of tags to the document. Only useful in add mode."
-  ]
+parsePath :: Monad m => String -> m FS.FilePath
+parsePath = return . FS.decodeString
 
-getResultSize :: String -> EitherT EarlyExit IO Int
-getResultSize s = case reads s of
-  [(s', _)] -> return s'
-  _         -> left $ InvalidOptions "Need a numeric value for the \"result-size\" option"
+parseTitle :: Monad m => String -> m DocumentTitle
+parseTitle = return . DocumentTitle
 
-usage :: IO ()
-usage = do
-  prg <- getProgName
-  let header = "Usage: " ++ prg ++ " [add file1 file2...|reindex|myquerystring]\n\n" ++
-               "Options:"
-  hPutStr stderr $ usageInfo header optionDescrs
+parseSender :: Monad m => String -> m DocumentSender
+parseSender = return . DocumentSender
 
-handleFormat :: String -> Options -> EitherT EarlyExit IO Options
-handleFormat arg opts = do
-  let mFormat = case map toLower arg of
-        "compact" -> Just CompactFormat
-        "c"       -> Just CompactFormat
-        "detail"  -> Just DetailedFormat
-        "d"       -> Just DetailedFormat
-        _         -> Nothing
-  case mFormat of
-    Just format -> return opts { outputFormat = format }
-    _           -> left $ InvalidOptions "Allowed value for -f : c[ompact], d[etail]"
+parseRecipient :: Monad m => String -> m DocumentRecipient
+parseRecipient = return . DocumentRecipient
 
-handlePDFMode:: String -> Options -> EitherT EarlyExit IO Options
-handlePDFMode arg opts = do
-  let mMode = case map toLower arg of
-        "image" -> Just ImagePDFMode
-        "i"     -> Just ImagePDFMode
-        "text"  -> Just TextPDFMode
-        "t"     -> Just TextPDFMode
-        _       -> Nothing
-  case mMode of
-    Just mode -> return opts { pdfMode = mode }
-    _           -> left $ InvalidOptions "Allowed value for -p : i[mage], t[ext]"
-
-handleDate :: String -> Options -> EitherT EarlyExit IO Options
-handleDate arg opts =
-  case parseDate arg of
-    Left failure -> left failure
-    Right mDate -> return $ opts { date = mDate }
-
-parseDate :: String -> Either EarlyExit (Maybe DocumentDate)
+parseDate :: Monad m => String -> m DocumentDate
 parseDate arg =
   let (lhs, rhs) = (\ (x, y) -> (x, drop 1 y)) . break (==' ') $ arg
       (eMonth, eYear) = case (lhs, rhs) of
         (_, "") -> (Right Nothing, parseYear lhs)
         _       -> (parseMonth lhs, parseYear rhs)
   in case (eMonth, eYear) of
-    (Left failure, _)          -> Left $ InvalidOptions failure
-    (_, Left failure)          -> Left $ InvalidOptions failure
-    (Right mMonth, Right year) -> Right $ Just (DocumentDate mMonth year)
+    (Left failure, _)          -> fail failure
+    (_, Left failure)          -> fail failure
+    (Right mMonth, Right year) -> return $ DocumentDate mMonth year
 
 parseMonth :: String -> Either String (Maybe Month)
 parseMonth "" = Right Nothing
@@ -201,10 +237,5 @@ parseYear inputYear =
     [(year, "")] -> Right year
     _            -> Left $ "Please enter a valid year"
 
-validateOptionPresence :: Options -> Either EarlyExit Options
-validateOptionPresence opts =
-  case (title opts, sender opts, recipient opts) of
-    (Left failure, _, _) -> Left failure
-    (_, Left failure, _) -> Left failure
-    (_, _, Left failure) -> Left failure
-    _                    -> Right opts
+parseTags :: Monad m => String -> m [Tag]
+parseTags = return . map (Tag . dropWhile (==' ')) . SPL.splitOneOf ",:"
