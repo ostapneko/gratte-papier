@@ -1,0 +1,21 @@
+.dl-horizontal.doc-info dd {
+  margin-left: 60px;
+}
+
+.dl-horizontal.doc-info dt {
+  width: 50px;
+}
+
+.doc-tag {
+    margin-left: 2px;
+    margin-right: 2px;
+}
+
+.tag-list {
+  padding: 10px;
+  line-height: 23px;
+}
+
+a.file-link {
+  color: black;
+}

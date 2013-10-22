@@ -11,6 +11,7 @@ define(`COMMON_DEPS', `base
                      , old-time
                      , optparse-applicative
                      , process
+                     , scotty
                      , split
                      , system-fileio
                      , system-filepath
@@ -31,6 +32,12 @@ cabal-version:       >=1.10
 executable gratte-papier
   ghc-options:       -Wall
   main-is:           Main.hs
+  hs-source-dirs:    src
+  build-depends:     COMMON_DEPS
+
+executable gratte-server
+  ghc-options:       -Wall
+  main-is:           Server.hs
   hs-source-dirs:    src
   build-depends:     COMMON_DEPS
 

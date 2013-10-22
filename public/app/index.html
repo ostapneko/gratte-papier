@@ -1,10 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="gratteApp">
   <head>
     <title>Gratte-papier</title>
-    <link rel="stylesheet" href="/styles/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="/styles/vendor/bootstrap.no-icons.min.css">
+    <link rel="stylesheet" href="/styles/vendor/font-awesome/font-awesome.min.css">
+    <link rel="stylesheet" href="/styles/index.css">
   </head>
   <body>
-    <h1>Gratte-papier</h1>
+    <nav class="navbar navbar-default navbar-static-top" role="navigation">
+    <div class="container">
+      <div class="navbar-header">
+        <a class="navbar-brand" href="#">Gratte</a>
+      </div>
+    </div>
+    </nav>
+    <div class="container" ng-controller="DocCtrl">
+      <h1>Search</h1>
+      <form role="form" ng-submit="search()">
+        <input autofocus type="text" class="form-control" placeholder="Search for document" ng-model="searchQuery" ng-change="search()">
+      </form>
+      <h1>Latest documents</h1>
+      <div>
+        <ul class="list-group">
+          <li class="list-group-item" ng-repeat="doc in docs">
+          <div class="row doc">
+            <div class="col-md-8">
+              <h3>{{ doc.title }} <a ng-href="{{doc | path }}" class="file-link"><i class="icon-file-text"></i></a></h3>
+              <div class="row">
+                <div class="col-md-6">
+                  <dl class="dl-horizontal doc-info">
+                    <dt>Date:</dt>
+                    <dd ng-bind="doc | yearMonth"></dd>
+                    <dt>From:</dt>
+                    <dd ng-bind="doc.sender"></dd>
+                    <dt>To:</dt>
+                    <dd ng-bind="doc.recipient"></dd>
+                  </dl>
+                </div>
+                <div class="col-md-6 tag-list">
+                  <div ng-repeat="tag in doc.tags" class="pull-left">
+                    <span class="label label-primary doc-tag" ng-bind="tag"></span>
+                  </div>
+                </div>
+              </div>
+                <p ng-bind="doc | shortText" class="text-muted small"></p>
+            </div>
+            <div class="col-md-4 thumb-container">
+            </div>
+          </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <script src="/scripts/vendor/angular.min.js"></script>
+    <script src="/scripts/script.js"></script>
   </body>
 </html>

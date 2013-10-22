@@ -3,6 +3,9 @@ module Gratte.Options
   , AddOptions(..)
   , SearchOptions(..)
   , defaultEsHost
+  , defaultOptions
+  , defaultSearchOptions
+  , webSearchOptions
   , EsHost(..)
   , EsIndex(..)
   , PDFMode(..)
@@ -19,7 +22,7 @@ import qualified Data.List.Split as SPL
 
 import qualified Filesystem.Path.CurrentOS as FS
 
-import           Network.URI
+import           Network.URI hiding (query)
 
 import           Options.Applicative
 
@@ -63,6 +66,19 @@ data SearchOptions = SearchOptions
   , resultSize   :: Int
   , query        :: String
   } deriving Show
+
+defaultSearchOptions = SearchOptions
+  { outputFormat = OutputFormatDetailed
+  , resultSize = 20
+  , query = ""
+  }
+
+webSearchOptions :: String -> Options
+webSearchOptions q =
+  let searchOpts = defaultSearchOptions { query = q }
+  in  defaultOptions { verbosity = VerbositySilent
+                     , optCommand = SearchCmd searchOpts
+                     }
 
 data Options = Options
   { verbosity   :: Verbosity
@@ -143,7 +159,7 @@ parseSearchOptions = SearchOptions
                      ( long "result-size"
                     <> short 'n'
                     <> metavar "N"
-                    <> value 20
+                    <> value (resultSize defaultSearchOptions)
                     <> help "The number of returned results" )
                  <*> argument str
                      ( help "Search query"
