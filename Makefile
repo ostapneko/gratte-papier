@@ -9,7 +9,7 @@ FONT_AWESOME_DIR      = $(STYLES_VENDOR_DIR)/font-awesome
 FONT_AWESOME_CSS      = $(FONT_AWESOME_DIR)/font-awesome.min.css
 FONT_AWESOME_FONT_DIR = $(STYLES_VENDOR_DIR)/font
 FONT_AWESOME_ZIP      = $(APP_FOLDER)/font-awesome.zip
-FONT_AWESOME_TMP      = $(APP_FOLDER)/font-awesome
+FONT_AWESOME_TMP      = $(APP_FOLDER)/font-awesome-4.0.3
 
 SCRIPTS_VENDOR_DIR    = $(APP_FOLDER)/scripts/vendor
 ANGULAR               = $(SCRIPTS_VENDOR_DIR)/angular.min.js
@@ -38,13 +38,13 @@ font_awesome:  $(FONT_AWESOME_FONT_DIR)/fontawesome-webfont.eot \
                clean_font_awesome
 
 $(FONT_AWESOME_FONT_DIR)/fontawesome-webfont.%: | $(FONT_AWESOME_TMP) $(FONT_AWESOME_FONT_DIR)
-	mv $(FONT_AWESOME_TMP)/font/$(notdir $@) $@
+	mv $(FONT_AWESOME_TMP)/fonts/$(notdir $@) $@
 
 $(FONT_AWESOME_CSS): | $(FONT_AWESOME_TMP) $(FONT_AWESOME_DIR)
 	mv $(FONT_AWESOME_TMP)/css/$(notdir $@) $@
 
 $(FONT_AWESOME_TMP):
-	wget 'http://fontawesome.io/assets/font-awesome.zip' -O $(FONT_AWESOME_ZIP)
+	wget 'http://fontawesome.io/assets/font-awesome-4.0.3.zip' -O $(FONT_AWESOME_ZIP)
 	unzip $(FONT_AWESOME_ZIP) -d $(APP_FOLDER)
 
 $(FONT_AWESOME_FONT_DIR):
