@@ -33,19 +33,21 @@ extractText file = do
   liftIO $ withSystemTempDirectory "ocr-text" $ \ tempDir -> do
     withGratte opts $
       case (ext, pdfM, hasOcr) of
-        (Just ".pdf", PDFModeImage, _    ) -> extractPDFImage tempDir filePath
-        (Just ".pdf", PDFModeText , _    ) -> extractPDFText tempDir filePath
+        (Just "pdf", PDFModeImage, _    )  -> extractPDFImage tempDir filePath
+        (Just "pdf", PDFModeText , _    )  -> extractPDFText tempDir filePath
         (_          , _           , False) -> return Nothing
         (_          , _           , True ) -> extractImage tempDir filePath
 
 extractImage :: TextExtractor
 extractImage tempDir file = do
   opts <- getOptions
-  liftIO $ withTempFile tempDir "temp-ocr" $ \tempFile _ -> do
-    (exitCode, err) <- execTesseract file tempFile
+  let tmpFileNoExt = tempDir ++ "/tmp"
+  liftIO $ do
+    (exitCode, err) <- execTesseract file tmpFileNoExt
     case exitCode of
       ExitSuccess   -> do
-        rawText <- TIO.readFile (tempFile ++ ".txt")
+        -- caveat: tesseract adds a .txt extension to the output, even if it already exists!
+        rawText <- TIO.readFile (tmpFileNoExt ++ ".txt")
         return . Just $ T.map removeStrangeChars rawText
       ExitFailure _ -> do
         withGratte opts $ do
@@ -72,7 +74,7 @@ extractSingleImage tempDir = do
   opts <- getOptions
   liftIO $ do
     imagesBaseNames <- filter (`FS.hasExtension` "png") `liftM` (FS.listDirectory tempDir)
-    let imagePaths = map (\ n -> FS.encodeString $ tempDir <//> n) imagesBaseNames
+    let imagePaths = map FS.encodeString imagesBaseNames
         singleImagePath = FS.encodeString singleImage
     (exitCode, err) <- execConvertAppend imagePaths singleImagePath
     withGratte opts $ do

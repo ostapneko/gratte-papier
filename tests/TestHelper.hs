@@ -4,8 +4,10 @@ module TestHelper
   ( inTestContext
   , cleanES
   , addCommand
+  , addOptions
   , searchCommand
-  , exampleFile
+  , exampleImageFile
+  , examplePDFFile
   ) where
 
 import Control.Monad.Gratte
@@ -45,11 +47,16 @@ testOpts tmpDir = Options
   , optCommand  = error "Command not set"
   }
 
-exampleFile :: FS.FilePath
-exampleFile = mconcat ["tests", "integration", "resources", "example.png"]
+resourceDir :: FS.FilePath
+resourceDir = mconcat ["tests", "integration", "resources"]
 
-addCommand :: Command
-addCommand = AddCmd $ AddOptions
+exampleImageFile :: FS.FilePath
+exampleImageFile = resourceDir <> "example.png"
+
+examplePDFFile :: FS.FilePath
+examplePDFFile = resourceDir <> "example.pdf"
+
+addOptions = AddOptions
   { pdfMode   = PDFModeText
   , ocr       = True
   , title     = DocumentTitle "title"
@@ -57,8 +64,11 @@ addCommand = AddCmd $ AddOptions
   , recipient = DocumentRecipient "recipient"
   , date      = DocumentDate Nothing 2013
   , tags      = [Tag "tag"]
-  , newFiles  = [exampleFile]
+  , newFiles  = [exampleImageFile]
   }
+
+addCommand :: Command
+addCommand = AddCmd addOptions
 
 searchCommand :: Command
 searchCommand = SearchCmd $ SearchOptions

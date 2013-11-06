@@ -22,20 +22,53 @@ import Gratte.Utils    (getFilesRecurs)
 
 main :: IO ()
 main = hspec $ do
-  describe "Add and retrieve document" $ do
+  describe "Add and retrieve jpg document" $ do
     it "Adds a document and allows for its search" $ do
       (copiedDocSize, searchedDoc) <- do
         inTestContext $ \ opts tmpDir -> do
           withGratte (opts { optCommand = addCommand }) $ do
             cleanES
-            addExampleDoc
+            addExampleDoc exampleImageFile
             refreshIndex
           withGratte (opts { optCommand = searchCommand }) $ do
-            copiedDocSize' <- getCopiedDocSize $ FS.decodeString tmpDir
+            copiedDocSize' <- getCopiedDocSize (FS.decodeString tmpDir) exampleImageFile
             searchedDoc'   <- getDocs "hspec"
             return (copiedDocSize', searchedDoc')
 
-      assertFileCopy copiedDocSize
+      assertFileCopy exampleImageFile copiedDocSize
+      assertSearchSuccess searchedDoc
+
+  describe "Add and retrieve text PDF document" $ do
+    it "Adds a PDF document as text and allows for its search" $ do
+      (copiedDocSize, searchedDoc) <- do
+        inTestContext $ \ opts tmpDir -> do
+          withGratte (opts { optCommand = addCommand }) $ do
+            cleanES
+            addExampleDoc examplePDFFile
+            refreshIndex
+          withGratte (opts { optCommand = searchCommand }) $ do
+            copiedDocSize' <- getCopiedDocSize (FS.decodeString tmpDir) examplePDFFile
+            searchedDoc'   <- getDocs "haskell"
+            return (copiedDocSize', searchedDoc')
+
+      assertFileCopy examplePDFFile copiedDocSize
+      assertSearchSuccess searchedDoc
+
+  describe "Add and retrieve an image PDF document" $ do
+    it "Adds a PDF document as text and allows for its search" $ do
+      (copiedDocSize, searchedDoc) <- do
+        inTestContext $ \ opts tmpDir -> do
+          let addOptions' = addOptions { pdfMode = PDFModeImage }
+          withGratte (opts { optCommand = AddCmd addOptions' }) $ do
+            cleanES
+            addExampleDoc examplePDFFile
+            refreshIndex
+          withGratte (opts { optCommand = searchCommand }) $ do
+            copiedDocSize' <- getCopiedDocSize (FS.decodeString tmpDir) examplePDFFile
+            searchedDoc'   <- getDocs "haskell"
+            return (copiedDocSize', searchedDoc')
+
+      assertFileCopy examplePDFFile copiedDocSize
       assertSearchSuccess searchedDoc
 
   describe "Reindex" $ do
@@ -43,7 +76,7 @@ main = hspec $ do
       searchedDoc <- inTestContext $ \ opts _ -> do
         withGratte (opts { optCommand = addCommand }) $ do
           cleanES
-          addExampleDoc
+          addExampleDoc exampleImageFile
         withGratte (opts { optCommand = ReindexCmd }) $ do
           reindex
           refreshIndex
@@ -51,11 +84,11 @@ main = hspec $ do
       assertSearchSuccess searchedDoc
 
 
-addExampleDoc :: Gratte ()
-addExampleDoc = do
-  docs <- createDocuments [exampleFile]
+addExampleDoc :: FS.FilePath -> Gratte ()
+addExampleDoc file = do
+  docs <- createDocuments [file]
   liftIO . putStrLn $ show docs
-  archive $ zip [exampleFile] docs
+  archive $ zip [file] docs
 
 refreshIndex :: Gratte ()
 refreshIndex = do
@@ -65,16 +98,16 @@ refreshIndex = do
   _ <- liftIO $ simpleHTTP $ (mkRequest POST url :: Request String)
   return ()
 
-getCopiedDocSize :: FS.FilePath -> Gratte Integer
-getCopiedDocSize tmpDir = liftIO $ do
-  files <- getFilesRecurs tmpDir
-  let file = head $ filter ((== Just "png") . FS.extension) files
-  fileSize <- liftIO $ FS.getSize file
+getCopiedDocSize :: FS.FilePath -> FS.FilePath -> Gratte Integer
+getCopiedDocSize tmpDir sourceFile = liftIO $ do
+  files <- liftIO $ getFilesRecurs tmpDir
+  let copiedFile = head $ filter ((== (FS.extension sourceFile)) . FS.extension) files
+  fileSize <- liftIO $ FS.getSize copiedFile
   return fileSize
 
-assertFileCopy :: Integer -> Expectation
-assertFileCopy actSize = do
-  expSize <- liftIO $ FS.getSize exampleFile
+assertFileCopy :: FS.FilePath -> Integer -> Expectation
+assertFileCopy sourceFile actSize = do
+  expSize <- liftIO $ FS.getSize sourceFile
   actSize `shouldBe` expSize
 
 assertSearchSuccess :: [Document] -> Expectation

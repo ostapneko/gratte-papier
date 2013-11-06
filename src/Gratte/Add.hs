@@ -46,7 +46,7 @@ processFile f doc = do
   -- send to ElasticSearch
   sendToES doc
 
--- | Create a list of docuements from filepaths
+-- | Create a list of documents from filepaths
 -- If there are more than one document, their title
 -- and file name contain the page number
 createDocuments :: [FS.FilePath] -> Gratte [Document]
