@@ -18,6 +18,7 @@ ANGULAR               = $(SCRIPTS_VENDOR_DIR)/angular.min.js
 all: backend webapp
 
 backend: gratte-papier.cabal
+	cabal sandbox init
 	cabal install
 
 gratte-papier.cabal: gratte-papier.cabal.m4
