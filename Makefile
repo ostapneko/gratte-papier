@@ -19,7 +19,7 @@ all: backend webapp
 
 backend: gratte-papier.cabal
 	cabal sandbox init
-	cabal install
+	cabal install --bindir=bin
 
 gratte-papier.cabal: gratte-papier.cabal.m4
 	m4 gratte-papier.cabal.m4 > gratte-papier.cabal
