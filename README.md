@@ -15,4 +15,4 @@ Gratte-papier requires GHC > 7.6.3 and cabal > 1.18
 
 `make`
 
-The executable will be in the `bin` directory of the project folder
+The executables will be in the `bin` directory of the project folder
