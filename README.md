@@ -8,3 +8,11 @@ Gratte Papier takes scanned documents in batch, store them in a folder, tag and 
 This is a very early release.
 
 Documentation is coming soon !
+
+Installation
+============
+Gratte-papier requires GHC > 7.6.3 and cabal > 1.18
+
+`make`
+
+The executable will be in the `bin` directory of the project folder
