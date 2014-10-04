@@ -15,7 +15,7 @@ getFilesRecurs f = do
     True  -> return [f]
     False -> do
       children <- FS.listDirectory f
-      let children' = filter (not . null . FS.encodeString . FS.basename) children
+      let children' = filter regularFile children
       grandChildren <- mapM getFilesRecurs children'
       return $ concat grandChildren
 
@@ -24,3 +24,11 @@ getFilesRecurs f = do
 (<//>) :: FS.FilePath -> FS.FilePath -> FS.FilePath
 f1 <//> f2 = f1 <> f2'
   where f2' = FS.decodeString . dropWhile (=='/') . FS.encodeString $ f2
+
+regularFile :: FS.FilePath -> Bool
+regularFile file =
+  let basename = FS.encodeString $ FS.basename file
+  in case basename of
+    '.' : _ -> False
+    ""      -> False
+    _       -> True
