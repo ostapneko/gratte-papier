@@ -9,7 +9,7 @@ define(`COMMON_DEPS', `base
                      , mtl
                      , network
                      , old-time
-                     , optparse-applicative
+                     , optparse-applicative ==0.9.1.1
                      , process
                      , scotty
                      , split
