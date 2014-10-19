@@ -266,7 +266,7 @@ monthStartingWith s =
       ms = filter (isPrefixOf s . show) months
   in case ms of
     [m] -> Right m
-    []  -> Left $ "Please enter a valid month, without abbreviations"
+    []  -> Left $ "Please enter a valid month"
     _   -> Left $ "Ambiguous month. It could be " ++ intercalate ", " (map show ms)
 
 parseYear :: String -> Either String Integer
