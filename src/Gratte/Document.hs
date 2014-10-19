@@ -34,7 +34,7 @@ docPathToString (DocumentPath path) = FS.encodeString path
 
 data Month = January | February | March | April | May | June | July
            | August | September | October | November | December
-           deriving (Show, Read)
+           deriving (Show, Read, Enum)
 
 instance ToJSON Month where
   toJSON = toJSON . show

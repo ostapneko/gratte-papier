@@ -17,6 +17,7 @@ module Gratte.Options
 
 import           Control.Monad
 
+import           Data.List
 import           Data.Char
 import qualified Data.List.Split as SPL
 
@@ -67,6 +68,7 @@ data SearchOptions = SearchOptions
   , query        :: String
   } deriving Show
 
+defaultSearchOptions :: SearchOptions
 defaultSearchOptions = SearchOptions
   { outputFormat = OutputFormatDetailed
   , resultSize = 20
@@ -98,6 +100,7 @@ defaultEsHost = EsHost $ URI
   , uriFragment = ""
   }
 
+defaultOptions :: Options
 defaultOptions = Options
   { verbosity = VerbosityNormal
   , esHost = defaultEsHost
@@ -255,10 +258,16 @@ parseDate arg =
 
 parseMonth :: String -> Either String (Maybe Month)
 parseMonth "" = Right Nothing
-parseMonth (c:cs) =
-  case reads (toUpper c:cs) :: [(Month, String)] of
-    [(month, "")] -> Right $ Just month
-    _             -> Left $ "Please enter a valid month, without abbreviations"
+parseMonth (h : t) = Just <$> monthStartingWith (toUpper h : t)
+
+monthStartingWith :: String -> Either String Month
+monthStartingWith s =
+  let months = enumFrom January
+      ms = filter (isPrefixOf s . show) months
+  in case ms of
+    [m] -> Right m
+    []  -> Left $ "Please enter a valid month, without abbreviations"
+    _   -> Left $ "Ambiguous month. It could be " ++ intercalate ", " (map show ms)
 
 parseYear :: String -> Either String Integer
 parseYear inputYear =
