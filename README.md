@@ -6,7 +6,7 @@ Gratte Papier takes scanned documents in batch, store them in a folder, tag and 
 
 This is a very early release.
 
-Documentation is coming soon !
+~~Documentation is coming soon !~~
 
 # Installation
 
