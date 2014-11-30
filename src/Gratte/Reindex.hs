@@ -34,15 +34,15 @@ deleteIndex = do
   let url = h { uriPath = i ++ "/document" }
   result <- liftIO . simpleHTTP $ (mkRequest DELETE url :: Request BS.ByteString)
   case result of
-    Right (Response (2, _, _) _ _ _) -> logNotice $ "Index deleted"
-    Right (Response (4, 0, 4) _ _ _) -> logNotice $ "No index found"
+    Right (Response (2, _, _) _ _ _) -> logNotice "Index deleted"
+    Right (Response (4, 0, 4) _ _ _) -> logNotice "No index found"
     _                                -> logError  $ "Something went wrong in the index deletion. :" ++ show result
 
 importFiles :: Gratte ()
 importFiles = do
   f <- getOption folder
   logNotice $ "Starting file imports from folder: " ++ FS.encodeString f ++ " ..."
-  files <- liftIO $ (filter notMetadata) `liftM` getFilesRecurs f
+  files <- liftIO $ filter notMetadata `liftM` getFilesRecurs f
   mapM_ importFile files
   logNotice $ show (length files) ++ " files imported successfully."
 

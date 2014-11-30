@@ -32,7 +32,7 @@ getDocs queryText = do
   EsIndex i <- getOption esIndex
   size      <- getSearchOption resultSize
   let uriPath' = "/" ++ i ++ "/document/_search"
-  let queryString = "?q=" ++ (urlEncode queryText) ++ "&size=" ++ (show size)
+  let queryString = "?q=" ++ urlEncode queryText ++ "&size=" ++ show size
 
   let uri = h { uriPath = uriPath' , uriQuery = queryString }
 
@@ -42,10 +42,10 @@ getDocs queryText = do
   case result of
     Left err -> logAndReturnEmpty $ "An error happened when connecting to ES: " ++ show err
     Right (Response (x, y, z) _ _ body) -> do
-      unless (x == 2) $ do
+      unless (x == 2) $
         logError $ "ES failure code returned: " ++ show x ++ show y ++ show z
       case decode (BS.pack body) of
-        Nothing       -> logAndReturnEmpty $ "Parsing of the results from ES failed"
+        Nothing       -> logAndReturnEmpty "Parsing of the results from ES failed"
         Just jsonBody -> case fromJSON jsonBody of
           Error err -> logAndReturnEmpty $ "JSON object parsing failed: " ++ err ++ ". Original body: " ++ body
           Success (SearchResult (Hits docPayloads)) -> return $ map (\ (DocumentPayload doc) -> doc) docPayloads
@@ -64,5 +64,5 @@ outputDoc doc = do
       let DocumentPath relPath = docPath doc
           fullPath = docFolder <//> relPath
       putStrLn $ FS.encodeString fullPath
-    OutputFormatDetailed -> do
+    OutputFormatDetailed ->
       putStrLn $ describeDoc docFolder doc

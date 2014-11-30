@@ -12,8 +12,8 @@ import Gratte.Search
 
 
 main :: IO ()
-main = scotty 3000 $ do
+main = scotty 3000 $
   get "/search" $ do
     q <- param "q"
     docs <- liftIO $ withGratte (webSearchOptions q) $ getDocs q
-    json $ A.object $ [ "documents" A..= docs ]
+    json $ A.object [ "documents" A..= docs ]

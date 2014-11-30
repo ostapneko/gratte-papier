@@ -92,7 +92,7 @@ data Options = Options
   } deriving Show
 
 defaultEsHost :: EsHost
-defaultEsHost = EsHost $ URI
+defaultEsHost = EsHost URI
   { uriScheme = "http:"
   , uriAuthority = Just $ URIAuth "" "localhost" ":9200"
   , uriPath = ""
@@ -266,14 +266,14 @@ monthStartingWith s =
       ms = filter (isPrefixOf s . show) months
   in case ms of
     [m] -> Right m
-    []  -> Left $ "Please enter a valid month"
+    []  -> Left "Please enter a valid month"
     _   -> Left $ "Ambiguous month. It could be " ++ intercalate ", " (map show ms)
 
 parseYear :: String -> Either String Integer
 parseYear inputYear =
   case reads inputYear :: [(Integer, String)] of
     [(year, "")] -> Right year
-    _            -> Left $ "Please enter a valid year"
+    _            -> Left "Please enter a valid year"
 
 parseTags :: Monad m => String -> m [Tag]
 parseTags = return . map (Tag . dropWhile (==' ')) . SPL.splitOneOf ",:"

@@ -12,6 +12,7 @@ import           Control.Monad.Trans
 
 import           Data.Aeson
 import           Data.Char
+import           Data.Maybe
 import qualified Data.ByteString.Lazy.Char8 as BS
 
 import           System.Time
@@ -35,7 +36,7 @@ archive :: [(FS.FilePath, Document)] -> Gratte ()
 archive pairs = do
   let docs = map snd pairs
   logStartAddingFiles docs
-  forM_ pairs $ \ (file, doc) -> processFile file doc
+  forM_ pairs (uncurry processFile)
   logDoneAddingFiles docs
 
 -- | Add a single file with multiple tags
@@ -71,7 +72,7 @@ createDocument mPage file = do
         Just page -> titleString ++ " (Page " ++ show page ++ ")"
       prefix = makePrefix (DocumentTitle titleWithPage)
       targetPath = toTargetPath hash prefix file
-  return $ Document {
+  return Document {
              docHash        = hash
            , docTitle       = DocumentTitle titleWithPage
            , docPath        = DocumentPath targetPath
@@ -85,7 +86,7 @@ createDocument mPage file = do
 makePrefix :: DocumentTitle -> String
 makePrefix (DocumentTitle t) =
   filter isAscii . map (replaceSpaces . toLower) $ t
-    where replaceSpaces c = if (isSpace c) then '-' else c
+    where replaceSpaces c = if isSpace c then '-' else c
 
 getHash :: IO DocumentHash
 getHash = do
@@ -98,7 +99,7 @@ toTargetPath :: DocumentHash
              -> FS.FilePath
              -> FS.FilePath
 toTargetPath (DocumentHash hash) prf f =
-  let ext                 = maybe "" id $ FS.extension f
+  let ext                 = fromMaybe "" $ FS.extension f
       (a:b:c:rest)        = hash
       [a', b', c'] = map FS.decodeString [[a], [b], [c]]
   in "/" <//> a' <//> b' <//> c'
@@ -112,7 +113,7 @@ copyToRepo file doc = do
   docFolder <- getOption folder
   let newFile = docFolder <//> newFileRelPath
   let dir = FS.directory newFile
-  logDebug $ "\tCopy " ++ (FS.encodeString file) ++ " to " ++ (FS.encodeString newFile)
+  logDebug $ "\tCopy " ++ FS.encodeString file ++ " to " ++ FS.encodeString newFile
   liftIO $ do
     FS.createTree dir
     FS.copyFile file newFile
@@ -135,7 +136,7 @@ logStartAddingFiles :: [Document] -> Gratte ()
 logStartAddingFiles docs = do
   logDebug $ "Adding files \n\t"
           ++ L.intercalate "\n\t" (map (docPathToString . docPath) docs)
-  logNotice $ "Starting..."
+  logNotice "Starting..."
 
 logDoneAddingFiles :: [Document] -> Gratte ()
 logDoneAddingFiles docs = logNotice $
