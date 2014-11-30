@@ -9,7 +9,7 @@ FONT_AWESOME_DIR      = $(STYLES_VENDOR_DIR)/font-awesome
 FONT_AWESOME_CSS      = $(FONT_AWESOME_DIR)/font-awesome.min.css
 FONT_AWESOME_FONT_DIR = $(STYLES_VENDOR_DIR)/fonts
 FONT_AWESOME_ZIP      = /tmp/font-awesome.zip
-FONT_AWESOME_TMP      = /tmp/font-awesome-4.0.3
+FONT_AWESOME_TMP      = /tmp/Font-Awesome-4.0.3
 
 SCRIPTS_DIR           = $(APP_FOLDER)/scripts
 SCRIPTS_VENDOR_DIR    = $(SCRIPTS_DIR)/vendor
@@ -46,7 +46,7 @@ $(FONT_AWESOME_TMP): | $(FONT_AWESOME_ZIP)
 	unzip $(FONT_AWESOME_ZIP) -d /tmp
 
 $(FONT_AWESOME_ZIP):
-	wget 'http://fontawesome.io/assets/font-awesome-4.0.3.zip' -O $(FONT_AWESOME_ZIP)
+	wget 'https://github.com/FortAwesome/Font-Awesome/archive/v4.0.3.zip' -O $(FONT_AWESOME_ZIP)
 
 $(FONT_AWESOME_FONT_DIR):
 	mkdir -p $(FONT_AWESOME_FONT_DIR)
