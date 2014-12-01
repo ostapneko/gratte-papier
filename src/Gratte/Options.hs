@@ -112,37 +112,32 @@ defaultOptions = Options
 
 parseOptions :: Parser Options
 parseOptions = Options
-           <$> nullOption
+           <$> option (str >>= parseVerbosity)
                ( long "verbosity"
               <> short 'v'
               <> metavar "VERBOSITY"
               <> value (verbosity defaultOptions)
-              <> help "the output verbosity from 0 (silent) to 2 (verbose)"
-              <> reader parseVerbosity )
-           <*> nullOption
+              <> help "the output verbosity from 0 (silent) to 2 (verbose)")
+           <*> option (str >>= parseEsHost)
                ( long "es-host"
               <> metavar "HOST"
               <> value (esHost defaultOptions)
-              <> help "The ElasticSearch server hostname"
-              <> reader parseEsHost )
-           <*> nullOption
+              <> help "The ElasticSearch server hostname")
+           <*> option (str >>= parseEsIndex)
                ( long "es-index"
               <> metavar "NAME"
               <> value (esIndex defaultOptions)
-              <> help "The index for the documents in ElasticSearch"
-              <> reader parseEsIndex )
-           <*> nullOption
+              <> help "The index for the documents in ElasticSearch")
+           <*> option (str >>= parsePath)
                ( long "folder"
               <> metavar "PATH"
               <> value (folder defaultOptions)
-              <> help "The directory used to store the documents and their metadata"
-              <> reader parsePath )
-           <*> nullOption
+              <> help "The directory used to store the documents and their metadata")
+           <*> option (str >>= parsePath)
                ( long "log-file"
               <> metavar "PATH"
               <> value (logFilePath defaultOptions)
-              <> help "The log file"
-              <> reader parsePath )
+              <> help "The log file")
            <*> subparser
                  ( command "add" addParserInfo
                 <> command "search" searchParserInfo
@@ -158,7 +153,7 @@ parseSearchOptions = SearchOptions
                      ( long "compact"
                     <> short 'c'
                     <> help "Just output file names" )
-                 <*> option
+                 <*> option auto
                      ( long "result-size"
                     <> short 'n'
                     <> metavar "N"
@@ -180,40 +175,37 @@ parseAddOptions = AddOptions
                   ( long "ocr"
                  <> short 'o'
                  <> help "Uses OCR to try extract the text from the documents and add it as searchable metadata. Requires tesseract to be installed." )
-              <*> nullOption
+              <*> option (str >>= parseTitle)
                   ( long "title"
                  <> short 't'
                  <> metavar "TITLE"
-                 <> help "The title of the documents. If more than one documents are present, add a page number after it (e.g. \"My doc (Page 1)\", etc. )"
-                 <> reader parseTitle )
-              <*> nullOption
+                 <> help "The title of the documents. If more than one documents are present, add a page number after it (e.g. \"My doc (Page 1)\", etc. )")
+              <*> option (str >>= parseSender)
                   ( long "sender"
                  <> short 's'
                  <> metavar "NAME"
-                 <> help "The document's sender"
-                 <> reader parseSender )
-              <*> nullOption
+                 <> help "The document's sender")
+              <*> option (str >>= parseRecipient)
                   ( long "recipient"
                  <> short 'r'
                  <> metavar "NAME"
-                 <> help "The document's recipient"
-                 <> reader parseRecipient )
-              <*> nullOption
+                 <> help "The document's recipient")
+              <*> option (str >>= parseDate)
                   ( long "date"
                  <> short 'd'
                  <> metavar "\"MONTH YEAR\""
-                 <> help "The documents' month (optionaly) and year. If provided, the date MUST be in the form \"September 2013\"."
-                 <> reader parseDate )
-              <*> nullOption
+                 <> help "The documents' month (optionaly) and year. If provided, the date MUST be in the form \"September 2013\".")
+              <*> option (str >>= parseTags)
                   ( long "tags"
                  <> short 'T'
                  <> metavar "TAG1,TAG2"
                  <> value []
-                 <> help "Add a comma or colon separated list of tags to the document"
-                 <> reader parseTags )
-              <*> arguments (\ s -> FS.decodeString `liftM` str s)
-                 ( help "Files to add"
-                <> metavar "FILES" )
+                 <> help "Add a comma or colon separated list of tags to the document")
+              <*> many (
+                    argument (FS.decodeString `liftM` str)
+                             ( help "Files to add"
+                             <> metavar "FILES" )
+                  )
 
 reindexParserInfo :: ParserInfo Command
 reindexParserInfo = info (helper <*> pure ReindexCmd) fullDesc
