@@ -61,7 +61,7 @@ createDoc :: FS.FilePath -> Gratte (Maybe Document)
 createDoc file = do
   let metadataFile = FS.replaceExtension file "json"
   metadataExist <- liftIO $ FS.isFile metadataFile
-  if (metadataExist)
+  if metadataExist
     then do
       jsonDoc <- liftIO $ BS.readFile (FS.encodeString metadataFile)
       let parsed = decode jsonDoc :: Maybe Document

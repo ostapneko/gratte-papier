@@ -10,7 +10,7 @@ import System.Exit
 
 execTesseract :: FilePath -> FilePath -> IO (ExitCode, String)
 execTesseract file tempFile = do
-  (exitCode, _, err) <- do
+  (exitCode, _, err) <-
     readProcessWithExitCode
       "tesseract"
       [file, tempFile]
@@ -19,7 +19,7 @@ execTesseract file tempFile = do
 
 execConvert :: FilePath -> FilePath -> IO (ExitCode, String)
 execConvert file tempDir = do
-  (exitCode, _, err) <- do
+  (exitCode, _, err) <-
     readProcessWithExitCode
       "convert"
       [file, tempDir ++ "/temp-png.png"]
@@ -28,7 +28,7 @@ execConvert file tempDir = do
 
 execConvertAppend :: [FilePath] -> FilePath -> IO (ExitCode, String)
 execConvertAppend images singleImage = do
-  (exitCode, _, err) <- do
+  (exitCode, _, err) <-
     readProcessWithExitCode
       "convert"
       (images ++ ["-append", singleImage])
@@ -37,7 +37,7 @@ execConvertAppend images singleImage = do
 
 execPDFToText :: FilePath -> FilePath -> IO (ExitCode, String)
 execPDFToText file tempFile = do
-  (exitCode, _, err) <- do
+  (exitCode, _, err) <-
     readProcessWithExitCode
       "pdftotext"
       [file, tempFile]

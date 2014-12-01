@@ -30,7 +30,7 @@ extractText file = do
   let ext = FS.extension file
   opts   <- getOptions
   let filePath = FS.encodeString file
-  liftIO $ withSystemTempDirectory "ocr-text" $ \ tempDir -> do
+  liftIO $ withSystemTempDirectory "ocr-text" $ \ tempDir ->
     withGratte opts $
       case (ext, pdfM, hasOcr) of
         (Just "pdf", PDFModeImage, _    )  -> extractPDFImage tempDir filePath
@@ -49,7 +49,7 @@ extractImage tempDir file = do
         -- caveat: tesseract adds a .txt extension to the output, even if it already exists!
         rawText <- TIO.readFile (tmpFileNoExt ++ ".txt")
         return . Just $ T.map removeStrangeChars rawText
-      ExitFailure _ -> do
+      ExitFailure _ ->
         withGratte opts $ do
           logError $ "Could not OCR the file: " ++ file
           logError err
@@ -60,7 +60,7 @@ extractPDFImage tempDir file = do
   opts <- getOptions
   liftIO $ do
     (exitCode, err) <- execConvert file tempDir
-    withGratte opts $ do
+    withGratte opts $
       case exitCode of
         ExitSuccess   -> extractSingleImage (FS.decodeString tempDir)
         ExitFailure _ -> do
@@ -73,11 +73,11 @@ extractSingleImage tempDir = do
   let singleImage = tempDir <//> "single-image.png"
   opts <- getOptions
   liftIO $ do
-    imagesBaseNames <- filter (`FS.hasExtension` "png") `liftM` (FS.listDirectory tempDir)
+    imagesBaseNames <- filter (`FS.hasExtension` "png") `liftM` FS.listDirectory tempDir
     let imagePaths = map FS.encodeString imagesBaseNames
         singleImagePath = FS.encodeString singleImage
     (exitCode, err) <- execConvertAppend imagePaths singleImagePath
-    withGratte opts $ do
+    withGratte opts $
       case exitCode of
         ExitSuccess   -> extractImage (FS.encodeString tempDir) singleImagePath
         ExitFailure _ -> do
@@ -94,7 +94,7 @@ extractPDFText tempDir file  = do
       ExitSuccess   -> do
         rawText <- TIO.hGetContents h
         return . Just $ T.map removeStrangeChars rawText
-      ExitFailure _ -> do
+      ExitFailure _ ->
         withGratte opts $ do
           logError $ "Could not convert the pdf file: " ++ file
           logError err
@@ -102,8 +102,6 @@ extractPDFText tempDir file  = do
 
 removeStrangeChars :: Char -> Char
 removeStrangeChars c =
-  case c `elem` alpha of
-      True  -> c
-      False -> ' '
+  if c `elem` alpha then c else ' '
     where alpha = ['a'..'z'] ++ ['A'..'Z'] ++
                   ['0'..'9'] ++ "ÉÈÊÀÂÎÔéèêàâîô."

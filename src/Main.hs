@@ -28,7 +28,7 @@ main = do
 askForConfirmation :: Bool    -- ^ Is it the first time we ask the question ?
                    -> IO Bool
 askForConfirmation isFirstTime = do
-  let msg = if (isFirstTime)
+  let msg = if isFirstTime
               then "Do you want to procede? [y/N]"
               else "Please type \"y\" or \"n\""
   putStrLn msg
@@ -44,4 +44,4 @@ addFiles files = do
   docFolder <- getOption folder
   liftIO . putStrLn $ createReport docFolder documents
   confirmation <- liftIO $ askForConfirmation True
-  when (confirmation) (Add.archive (zip files documents))
+  when confirmation (Add.archive (zip files documents))

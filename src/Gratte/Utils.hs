@@ -11,9 +11,9 @@ import qualified Filesystem.Path.CurrentOS as FS
 getFilesRecurs :: FS.FilePath -> IO [FS.FilePath]
 getFilesRecurs f = do
   isFile' <- FS.isFile f
-  case isFile' of
-    True  -> return [f]
-    False -> do
+  if isFile'
+    then return [f]
+    else do
       children <- FS.listDirectory f
       let children' = filter regularFile children
       grandChildren <- mapM getFilesRecurs children'

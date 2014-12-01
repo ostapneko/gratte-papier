@@ -57,8 +57,8 @@ configureLogger (LoggerSettings path level) = do
   updateGlobalLogger rootLoggerName
     (setLevel DEBUG
     . setHandlers (
-    map (flip setFormatter (getFormatter prg))
-    $ [logFileHandler, consoleHandler]))
+    map (`setFormatter` getFormatter prg)
+        [logFileHandler, consoleHandler]))
 
 getFormatter :: String -> LogFormatter (GenericHandler Handle)
 getFormatter prg = simpleLogFormatter $ "[$utcTime] [$prio] [" ++ prg ++ "] $msg"

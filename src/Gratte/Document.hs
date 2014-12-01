@@ -49,12 +49,12 @@ instance FromJSON Month where
 data DocumentDate = DocumentDate (Maybe Month) Integer deriving Show
 instance ToJSON DocumentDate where
   toJSON (DocumentDate mMonth year) =
-    object $ [ "month" .= toJSON mMonth
-             , "year"  .= toJSON year
-             ]
+    object [ "month" .= toJSON mMonth
+           , "year"  .= toJSON year
+           ]
 
 instance FromJSON DocumentDate where
-  parseJSON (Object v) = do
+  parseJSON (Object v) =
     DocumentDate <$> v .:? "month"
                  <*> v .: "year"
   parseJSON _ = mzero
@@ -79,15 +79,15 @@ data Document = Document {
 
 instance ToJSON Document where
   toJSON doc =
-    object $ [ "hash"        .= docHash doc
-             , "title"       .= docTitle doc
-             , "path"        .= docPath doc
-             , "sender"      .= docSender doc
-             , "recipient"   .= docRecipient doc
-             , "date"        .= docDate doc
-             , "tags"        .= docTags doc
-             , "scannedText" .= docScannedText doc
-             ]
+    object [ "hash"        .= docHash doc
+           , "title"       .= docTitle doc
+           , "path"        .= docPath doc
+           , "sender"      .= docSender doc
+           , "recipient"   .= docRecipient doc
+           , "date"        .= docDate doc
+           , "tags"        .= docTags doc
+           , "scannedText" .= docScannedText doc
+           ]
 
 instance FromJSON Document where
   parseJSON (Object v) = do
