@@ -6,29 +6,31 @@ Gratte Papier takes scanned documents in batch, store them in a folder, tag and 
 
 This is a very early release.
 
-~~Documentation is coming soon !~~
-
 # Installation
 
-## Ansible
-The prefered way of getting it to run is to use the Ansible [gratte-box provisioning code](https://github.com/ostapneko/gratte-box). It only works on Ubuntu 12.04 64 bits now, but you shouldn't use Gratte-Papier outside of a VM for the moment anyway...
-
 ## Manual
-Gratte-papier requires
+To make Gratte-papier, you require
 - GHC 7.6.3
 - cabal > 1.18
-- ImageMagick
-- Tesseract OCR
-- poppler-utils
-- elasticsearch
 - coffee script (for the UI)
 
-After everything is installed, simply go to the gratte-papier repo and run
-`make`
+After everything is installed, simply go to the gratte-papier repo and run `make`
 
 The executables will be in the `bin` directory of the project folder
 
 # Usage
+
+## Setup
+
+To query, make sure you have Elasticsearch running
+
+To add new documents, you also need
+- ImageMagick
+- Tesseract OCR
+- poppler-utils
+- elasticsearch
+
+Also, you would need to have `/var/gratte` and `var/log/gratte` folders with read/write access, though they can be overriden by the appropritate options (see below).
 
 ## General Options
 
@@ -43,7 +45,7 @@ You add document via the command line interface. The best documentation I can gi
 ### Server
 
 Use `gratte-papier serve`. You need to have Elasticsearch running. By default the server listen on port 3000. To change that, use `gratte-papier serve -p PORT`.
-There is also a UI which is cumbersome at the moment to deploy, but I'll have the server serve it soon enough (hopefully).
+You can then access the app at `localhost:3000`
 
 ### Command line
 You can also query via the command line. For more detail, try `gratte-papier search --help`
