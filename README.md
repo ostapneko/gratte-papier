@@ -2,7 +2,7 @@
 
 Scanned document management.
 
-Gratte Papier takes scanned documents in batch, store them in a folder, tag and OCR them. You can then search for them via the command line or a web application(gratte-server).
+Gratte Papier takes scanned documents in batch, store them in a folder, tag and OCR them. You can then search for them via the command line or a minimal web front-end.
 
 This is a very early release.
 
