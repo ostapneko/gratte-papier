@@ -30,7 +30,7 @@ getDocs :: String -> Gratte [Document]
 getDocs queryText = do
   EsHost h  <- getOption esHost
   EsIndex i <- getOption esIndex
-  size      <- getSearchOption resultSize
+  size      <- getResultSize
   let uriPath' = "/" ++ i ++ "/document/_search"
   let queryString = "?q=" ++ urlEncode queryText ++ "&size=" ++ show size
 
@@ -54,6 +54,13 @@ logAndReturnEmpty :: String -> Gratte [Document]
 logAndReturnEmpty msg = do
   logError msg
   return []
+
+getResultSize :: Gratte Int
+getResultSize = do
+  cmd <- getOption optCommand
+  return $ case cmd of
+    SearchCmd searchOpts -> resultSize searchOpts
+    _                    -> 20
 
 outputDoc :: Document -> Gratte ()
 outputDoc doc = do

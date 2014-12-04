@@ -19,14 +19,12 @@ main :: IO ()
 main = do
   let optDescrs = info (helper <*> parseOptions) fullDesc
   opts <- execParser optDescrs
+  withGratte opts setupLogger
   case optCommand opts of
-    ServeCmd serveOpts   -> serve serveOpts
-    AddCmd addOpts       -> withGratte' opts $ addFiles (newFiles addOpts)
-    ReindexCmd           -> withGratte' opts reindex
-    SearchCmd searchOpts -> withGratte' opts $ searchDocs (query searchOpts)
-
-withGratte' :: Options -> Gratte () -> IO ()
-withGratte' opts a = withGratte opts $ setupLogger >> a
+    ServeCmd serveOpts   -> serve opts serveOpts
+    AddCmd addOpts       -> withGratte opts $ addFiles (newFiles addOpts)
+    ReindexCmd           -> withGratte opts reindex
+    SearchCmd searchOpts -> withGratte opts $ searchDocs (query searchOpts)
 
 askForConfirmation :: Bool    -- ^ Is it the first time we ask the question ?
                    -> IO Bool

@@ -19,7 +19,8 @@ define(`COMMON_DEPS', `base
                      , temporary
                      , text
                      , unix
-                     , vector')dnl
+                     , vector
+                     , wai-middleware-static')dnl
 name:                gratte-papier
 version:             0.2.0.0
 synopsis:            Command-line tool to facilitate document archive via OCR.
@@ -30,7 +31,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable gratte-papier
-  ghc-options:       -Wall
+  ghc-options:       -Wall -Werror
   main-is:           Main.hs
   hs-source-dirs:    src
   build-depends:     COMMON_DEPS
@@ -44,4 +45,4 @@ test-suite integration
                      , tests/
 
   build-depends:     COMMON_DEPS
-                   , hspec
+                     , hspec

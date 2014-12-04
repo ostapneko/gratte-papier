@@ -1,8 +1,9 @@
 .DEFAULT_GOAL := all
 
-APP_FOLDER            = public/app
+FRONT_END_FOLDER      = front-end
+STATIC_DIR            = bin/static
 
-STYLES_VENDOR_DIR     = $(APP_FOLDER)/styles/vendor
+STYLES_VENDOR_DIR     = $(FRONT_END_FOLDER)/styles/vendor
 BOOTSTRAP_CSS         = $(STYLES_VENDOR_DIR)/bootstrap.no-icons.min.css
 
 FONT_AWESOME_DIR      = $(STYLES_VENDOR_DIR)/font-awesome
@@ -11,11 +12,12 @@ FONT_AWESOME_FONT_DIR = $(STYLES_VENDOR_DIR)/fonts
 FONT_AWESOME_ZIP      = /tmp/font-awesome.zip
 FONT_AWESOME_TMP      = /tmp/Font-Awesome-4.0.3
 
-SCRIPTS_DIR           = $(APP_FOLDER)/scripts
+SCRIPTS_DIR           = $(FRONT_END_FOLDER)/scripts
 SCRIPTS_VENDOR_DIR    = $(SCRIPTS_DIR)/vendor
 ANGULAR               = $(SCRIPTS_VENDOR_DIR)/angular.min.js
+FRONT_END_FILES       = `find $(FRONT_END_FOLDER) -regex ".*.\(js\|css\|html\|eot\|svg\|ttf\|woff\)"`
 
-all: backend webapp
+all: backend front_end
 
 backend: gratte-papier.cabal
 	cabal sandbox init
@@ -26,7 +28,14 @@ gratte-papier.cabal: gratte-papier.cabal.m4
 	m4 gratte-papier.cabal.m4 > gratte-papier.cabal
 
 
-webapp: $(BOOTSTRAP_CSS) $(ANGULAR) font_awesome scripts
+front_end: $(BOOTSTRAP_CSS) $(ANGULAR) font_awesome scripts | $(STATIC_DIR)
+	rm -rf $(STATIC_DIR) && \
+	for f in $(FRONT_END_FILES); \
+		do export dir=`dirname $$f | sed "s/$(FRONT_END_FOLDER)/bin\/static/"` && mkdir -p $$dir && cp $$f $$dir; \
+		done
+
+$(STATIC_DIR):
+	mkdir -p $@
 
 $(BOOTSTRAP_CSS): | $(STYLES_VENDOR_DIR)
 	wget 'http://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.no-icons.min.css' -O $(BOOTSTRAP_CSS)

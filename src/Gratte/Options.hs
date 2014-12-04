@@ -6,7 +6,6 @@ module Gratte.Options
   , defaultEsHost
   , defaultOptions
   , defaultSearchOptions
-  , webSearchOptions
   , EsHost(..)
   , EsIndex(..)
   , PDFMode(..)
@@ -81,13 +80,6 @@ defaultSearchOptions = SearchOptions
   , query = ""
   }
 
-webSearchOptions :: String -> Options
-webSearchOptions q =
-  let searchOpts = defaultSearchOptions { query = q }
-  in  defaultOptions { verbosity = VerbositySilent
-                     , optCommand = SearchCmd searchOpts
-                     }
-
 data Options = Options
   { verbosity   :: Verbosity
   , esHost      :: EsHost
@@ -149,8 +141,6 @@ parseOptions = Options
                 <> command "search"  searchParserInfo
                 <> command "reindex" reindexParserInfo
                 <> command "serve"   serveParserInfo)
-
-
 
 searchParserInfo :: ParserInfo Command
 searchParserInfo = info (helper <*> (SearchCmd <$> parseSearchOptions)) fullDesc
