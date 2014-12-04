@@ -34,12 +34,7 @@ executable gratte-papier
   main-is:           Main.hs
   hs-source-dirs:    src
   build-depends:     COMMON_DEPS
-
-executable gratte-server
-  ghc-options:       -Wall
-  main-is:           Server.hs
-  hs-source-dirs:    src
-  build-depends:     COMMON_DEPS
+  default-language:  Haskell2010
 
 test-suite integration
   type:              exitcode-stdio-1.0

@@ -6,24 +6,27 @@ import           Data.Char
 
 import qualified Filesystem.Path.CurrentOS as FS
 
-import           Options.Applicative
+import Options.Applicative
 
-import           Gratte.Options
-import           Gratte.Document
-import qualified Gratte.Add             as Add
-import qualified Gratte.Search          as Search
-import qualified Gratte.Reindex         as Reindex
+import Gratte.Options
+import Gratte.Document
+import Gratte.Add
+import Gratte.Search
+import Gratte.Reindex
+import Gratte.Serve
 
 main :: IO ()
 main = do
   let optDescrs = info (helper <*> parseOptions) fullDesc
   opts <- execParser optDescrs
-  withGratte opts $ do
-    setupLogger
-    case optCommand opts of
-      AddCmd addOpts       -> addFiles $ newFiles addOpts
-      ReindexCmd           -> Reindex.reindex
-      SearchCmd searchOpts -> Search.searchDocs $ query searchOpts
+  case optCommand opts of
+    ServeCmd serveOpts   -> serve serveOpts
+    AddCmd addOpts       -> withGratte' opts $ addFiles (newFiles addOpts)
+    ReindexCmd           -> withGratte' opts reindex
+    SearchCmd searchOpts -> withGratte' opts $ searchDocs (query searchOpts)
+
+withGratte' :: Options -> Gratte () -> IO ()
+withGratte' opts a = withGratte opts $ setupLogger >> a
 
 askForConfirmation :: Bool    -- ^ Is it the first time we ask the question ?
                    -> IO Bool
@@ -40,8 +43,8 @@ askForConfirmation isFirstTime = do
 
 addFiles :: [FS.FilePath] -> Gratte ()
 addFiles files = do
-  documents <- Add.createDocuments files
+  documents <- createDocuments files
   docFolder <- getOption folder
   liftIO . putStrLn $ createReport docFolder documents
   confirmation <- liftIO $ askForConfirmation True
-  when confirmation (Add.archive (zip files documents))
+  when confirmation (archive (zip files documents))

@@ -2,6 +2,7 @@ module Gratte.Options
   ( Options(..)
   , AddOptions(..)
   , SearchOptions(..)
+  , ServeOptions(..)
   , defaultEsHost
   , defaultOptions
   , defaultSearchOptions
@@ -46,9 +47,10 @@ data Verbosity = VerbositySilent
                | VerbosityVerbose
                deriving Show
 
-data Command = AddCmd     AddOptions
+data Command = AddCmd      AddOptions
              | ReindexCmd
-             | SearchCmd  SearchOptions
+             | SearchCmd   SearchOptions
+             | ServeCmd    ServeOptions
              deriving Show
 
 data AddOptions = AddOptions
@@ -66,6 +68,10 @@ data SearchOptions = SearchOptions
   { outputFormat :: OutputFormat
   , resultSize   :: Int
   , query        :: String
+  } deriving Show
+
+data ServeOptions = ServeOptions
+  { port :: Int
   } deriving Show
 
 defaultSearchOptions :: SearchOptions
@@ -123,25 +129,27 @@ parseOptions = Options
               <> metavar "HOST"
               <> value (esHost defaultOptions)
               <> help "The ElasticSearch server hostname")
-           <*> option (str >>= parseEsIndex)
+           <*> option (EsIndex <$> str)
                ( long "es-index"
               <> metavar "NAME"
               <> value (esIndex defaultOptions)
               <> help "The index for the documents in ElasticSearch")
-           <*> option (str >>= parsePath)
+           <*> option (FS.decodeString <$> str)
                ( long "folder"
               <> metavar "PATH"
               <> value (folder defaultOptions)
               <> help "The directory used to store the documents and their metadata")
-           <*> option (str >>= parsePath)
+           <*> option (FS.decodeString <$> str)
                ( long "log-file"
               <> metavar "PATH"
               <> value (logFilePath defaultOptions)
               <> help "The log file")
            <*> subparser
-                 ( command "add" addParserInfo
-                <> command "search" searchParserInfo
-                <> command "reindex" reindexParserInfo)
+                 ( command "add"     addParserInfo
+                <> command "search"  searchParserInfo
+                <> command "reindex" reindexParserInfo
+                <> command "serve"   serveParserInfo)
+
 
 
 searchParserInfo :: ParserInfo Command
@@ -175,17 +183,17 @@ parseAddOptions = AddOptions
                   ( long "ocr"
                  <> short 'o'
                  <> help "Uses OCR to try extract the text from the documents and add it as searchable metadata. Requires tesseract to be installed." )
-              <*> option (str >>= parseTitle)
+              <*> option (DocumentTitle <$> str)
                   ( long "title"
                  <> short 't'
                  <> metavar "TITLE"
                  <> help "The title of the documents. If more than one documents are present, add a page number after it (e.g. \"My doc (Page 1)\", etc. )")
-              <*> option (str >>= parseSender)
+              <*> option (DocumentSender <$> str)
                   ( long "sender"
                  <> short 's'
                  <> metavar "NAME"
                  <> help "The document's sender")
-              <*> option (str >>= parseRecipient)
+              <*> option (DocumentRecipient <$> str)
                   ( long "recipient"
                  <> short 'r'
                  <> metavar "NAME"
@@ -207,8 +215,21 @@ parseAddOptions = AddOptions
                              <> metavar "FILES" )
                   )
 
+parseServeOptions :: Parser ServeOptions
+parseServeOptions = ServeOptions
+                <$> option auto
+                  ( long "HTTP port"
+                 <> short 'p'
+                 <> metavar "PORT"
+                 <> value 3000
+                 <> help "The HTTP port gratte server will be listening to"
+                  )
+
 reindexParserInfo :: ParserInfo Command
 reindexParserInfo = info (helper <*> pure ReindexCmd) fullDesc
+
+serveParserInfo :: ParserInfo Command
+serveParserInfo = info (helper <*> (ServeCmd <$> parseServeOptions)) fullDesc
 
 parseVerbosity :: Monad m => String -> m Verbosity
 parseVerbosity "0" = return VerbositySilent
@@ -221,21 +242,6 @@ parseEsHost input =
   case parseAbsoluteURI input of
     Just uri -> return $ EsHost uri
     _        -> fail "The EsHost must be a valid absolute URI"
-
-parseEsIndex :: Monad m => String -> m EsIndex
-parseEsIndex = return . EsIndex
-
-parsePath :: Monad m => String -> m FS.FilePath
-parsePath = return . FS.decodeString
-
-parseTitle :: Monad m => String -> m DocumentTitle
-parseTitle = return . DocumentTitle
-
-parseSender :: Monad m => String -> m DocumentSender
-parseSender = return . DocumentSender
-
-parseRecipient :: Monad m => String -> m DocumentRecipient
-parseRecipient = return . DocumentRecipient
 
 parseDate :: Monad m => String -> m DocumentDate
 parseDate arg =

@@ -51,7 +51,6 @@ getAddOptions = do
     AddCmd addOpts -> return addOpts
     _              -> error $ "Trying to access add options while given the command: " ++ show cmd
 
-
 getAddOption :: (AddOptions -> a) -> Gratte a
 getAddOption getter = getter `liftM` getAddOptions
 
@@ -60,7 +59,7 @@ getSearchOptions = do
   cmd <- getOption optCommand
   case cmd of
     SearchCmd searchOpts -> return searchOpts
-    _              -> error $ "Trying to access search options while given the command: " ++ show cmd
+    _                    -> error $ "Trying to access search options while given the command: " ++ show cmd
 
 getSearchOption :: (SearchOptions -> a) -> Gratte a
 getSearchOption getter = getter `liftM` getSearchOptions
