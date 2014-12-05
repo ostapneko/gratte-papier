@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Gratte.Reindex
+module Gratte.Command.Reindex
   ( reindex
   ) where
 
@@ -19,8 +19,8 @@ import           Network.URI
 
 import           Gratte.Options
 import           Gratte.Document
-import           Gratte.Add           (sendToES)
-import           Gratte.Utils         (getFilesRecurs)
+import           Gratte.Command.Add (sendToES)
+import           Gratte.Utils       (getFilesRecurs)
 
 reindex :: Gratte ()
 reindex = do

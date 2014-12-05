@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Gratte.Serve
+module Gratte.Command.Serve
   ( serve
   ) where
 
@@ -17,7 +17,7 @@ import Web.Scotty hiding (Options)
 import Network.Wai.Middleware.Static
 
 import Gratte.Options
-import Gratte.Search
+import Gratte.Command.Search
 
 getStaticDir :: IO FS.FilePath
 getStaticDir = staticDir <$> getExecutablePath

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Gratte.Add
+module Gratte.Command.Add
   ( archive
   , sendToES
   , createDocuments

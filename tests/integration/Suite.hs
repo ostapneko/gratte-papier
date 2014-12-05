@@ -12,19 +12,19 @@ import Network.URI
 import Test.Hspec
 import TestHelper
 
-import Gratte.Add
+import Gratte.Command.Add
 import Gratte.Document
 import Gratte.Options
-import Gratte.Reindex  (reindex)
-import Gratte.Search   (getDocs)
+import Gratte.Command.Reindex  (reindex)
+import Gratte.Command.Search   (getDocs)
 import Gratte.Tag
 import Gratte.Utils    (getFilesRecurs)
 
 main :: IO ()
 main = hspec $ do
-  describe "Add and retrieve jpg document" $ do
+  describe "Add and retrieve jpg document" $
     it "Adds a document and allows for its search" $ do
-      (copiedDocSize, searchedDoc) <- do
+      (copiedDocSize, searchedDoc) <-
         inTestContext $ \ opts tmpDir -> do
           withGratte (opts { optCommand = addCommand }) $ do
             cleanES
@@ -38,9 +38,9 @@ main = hspec $ do
       assertFileCopy exampleImageFile copiedDocSize
       assertSearchSuccess searchedDoc
 
-  describe "Add and retrieve text PDF document" $ do
+  describe "Add and retrieve text PDF document" $
     it "Adds a PDF document as text and allows for its search" $ do
-      (copiedDocSize, searchedDoc) <- do
+      (copiedDocSize, searchedDoc) <-
         inTestContext $ \ opts tmpDir -> do
           withGratte (opts { optCommand = addCommand }) $ do
             cleanES
@@ -54,9 +54,9 @@ main = hspec $ do
       assertFileCopy examplePDFFile copiedDocSize
       assertSearchSuccess searchedDoc
 
-  describe "Add and retrieve an image PDF document" $ do
+  describe "Add and retrieve an image PDF document"
     it "Adds a PDF document as text and allows for its search" $ do
-      (copiedDocSize, searchedDoc) <- do
+      (copiedDocSize, searchedDoc) <-
         inTestContext $ \ opts tmpDir -> do
           let addOptions' = addOptions { pdfMode = PDFModeImage }
           withGratte (opts { optCommand = AddCmd addOptions' }) $ do
@@ -71,7 +71,7 @@ main = hspec $ do
       assertFileCopy examplePDFFile copiedDocSize
       assertSearchSuccess searchedDoc
 
-  describe "Reindex" $ do
+  describe "Reindex" $
     it "Regenerate the ES index" $ do
       searchedDoc <- inTestContext $ \ opts _ -> do
         withGratte (opts { optCommand = addCommand }) $ do
@@ -95,7 +95,7 @@ refreshIndex = do
   EsHost h <- getOption esHost
   EsIndex i <- getOption esIndex
   let url = h { uriPath = i ++ "/_refresh" }
-  _ <- liftIO $ simpleHTTP $ (mkRequest POST url :: Request String)
+  _ <- liftIO $ simpleHTTP $ mkRequest POST url :: Request String
   return ()
 
 getCopiedDocSize :: FS.FilePath -> FS.FilePath -> Gratte Integer

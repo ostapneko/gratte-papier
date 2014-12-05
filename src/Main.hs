@@ -10,10 +10,12 @@ import Options.Applicative
 
 import Gratte.Options
 import Gratte.Document
-import Gratte.Add
-import Gratte.Search
-import Gratte.Reindex
-import Gratte.Serve
+
+import Gratte.Command.Add
+import Gratte.Command.Search
+import Gratte.Command.Reindex
+import Gratte.Command.Serve
+import Gratte.Command.Encryption
 
 main :: IO ()
 main = do
@@ -25,6 +27,8 @@ main = do
     AddCmd addOpts       -> withGratte opts $ addFiles (newFiles addOpts)
     ReindexCmd           -> withGratte opts reindex
     SearchCmd searchOpts -> withGratte opts $ searchDocs (query searchOpts)
+    Encrypt encOpts      -> withGratte opts $ encrypt encOpts
+    Encrypt encOpts      -> withGratte opts $ decrypt encOpts
 
 askForConfirmation :: Bool    -- ^ Is it the first time we ask the question ?
                    -> IO Bool

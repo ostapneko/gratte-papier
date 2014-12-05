@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Gratte.Search
+module Gratte.Command.Search
   ( searchDocs
   , getDocs
   ) where
