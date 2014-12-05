@@ -19,4 +19,5 @@ parseEncryptionOptions = EncryptionOptions
                        ( long "password"
                       <> short 'p'
                       <> metavar "PASSWORD"
+                      <> value Nothing
                       <> help "Encryption password. It's recommended to pass the GRATTE_PASSWORD env var instead.")

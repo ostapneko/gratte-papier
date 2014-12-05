@@ -7,10 +7,10 @@ import Control.Monad.Gratte
 import Gratte.Options.Encryption
 
 encrypt :: EncryptionOptions -> Gratte ()
-encrypt opts = undefined
+encrypt opts = error "Not yet implemented"
 
 decrypt :: EncryptionOptions -> Gratte ()
-decrypt opts = undefined
+decrypt opts = error "Not yet implemented"
 
 
 
