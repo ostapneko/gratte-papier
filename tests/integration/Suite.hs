@@ -22,9 +22,9 @@ import Gratte.Utils    (getFilesRecurs)
 
 main :: IO ()
 main = hspec $ do
-  describe "Add and retrieve jpg document" $
+  describe "Add and retrieve jpg document" $ do
     it "Adds a document and allows for its search" $ do
-      (copiedDocSize, searchedDoc) <-
+      (copiedDocSize, searchedDoc) <- do
         inTestContext $ \ opts tmpDir -> do
           withGratte (opts { optCommand = addCommand }) $ do
             cleanES
@@ -38,9 +38,9 @@ main = hspec $ do
       assertFileCopy exampleImageFile copiedDocSize
       assertSearchSuccess searchedDoc
 
-  describe "Add and retrieve text PDF document" $
+  describe "Add and retrieve text PDF document" $ do
     it "Adds a PDF document as text and allows for its search" $ do
-      (copiedDocSize, searchedDoc) <-
+      (copiedDocSize, searchedDoc) <- do
         inTestContext $ \ opts tmpDir -> do
           withGratte (opts { optCommand = addCommand }) $ do
             cleanES
@@ -54,9 +54,9 @@ main = hspec $ do
       assertFileCopy examplePDFFile copiedDocSize
       assertSearchSuccess searchedDoc
 
-  describe "Add and retrieve an image PDF document"
+  describe "Add and retrieve an image PDF document" $ do
     it "Adds a PDF document as text and allows for its search" $ do
-      (copiedDocSize, searchedDoc) <-
+      (copiedDocSize, searchedDoc) <- do
         inTestContext $ \ opts tmpDir -> do
           let addOptions' = addOptions { pdfMode = PDFModeImage }
           withGratte (opts { optCommand = AddCmd addOptions' }) $ do
@@ -71,7 +71,7 @@ main = hspec $ do
       assertFileCopy examplePDFFile copiedDocSize
       assertSearchSuccess searchedDoc
 
-  describe "Reindex" $
+  describe "Reindex" $ do
     it "Regenerate the ES index" $ do
       searchedDoc <- inTestContext $ \ opts _ -> do
         withGratte (opts { optCommand = addCommand }) $ do
@@ -95,7 +95,7 @@ refreshIndex = do
   EsHost h <- getOption esHost
   EsIndex i <- getOption esIndex
   let url = h { uriPath = i ++ "/_refresh" }
-  _ <- liftIO $ simpleHTTP $ mkRequest POST url :: Request String
+  _ <- liftIO $ simpleHTTP $ (mkRequest POST url :: Request String)
   return ()
 
 getCopiedDocSize :: FS.FilePath -> FS.FilePath -> Gratte Integer
