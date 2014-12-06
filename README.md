@@ -40,6 +40,10 @@ Use `gratte-papier -h` to get all the common options, such as the log file, the 
 
 You add document via the command line interface. The best documentation I can give is the one you get by running `gratte-papier add --help`.
 
+## Reindexing
+
+If you import files from somewhere else (or decrypted them, see below), you need to refresh Elasticsearch. Run `gratte-papier reindex`
+
 ## Searching for document
 
 ### Server
@@ -49,3 +53,6 @@ You can then access the app at `localhost:3000`
 
 ### Command line
 You can also query via the command line. For more detail, try `gratte-papier search --help`
+
+## Saving documents
+In case you want to encrypt your Gratte folder file by file to (say) save it on Dropbox, you can use `gratte-papier encrypt -e /path/to/target/folder`. You can decrypt using `gratte-papier decrypt -e /path/to/target/folder`. In both cases, it will only synchronize the files that changed, based on modification time. The files are encrypted using CBC / AES 256.

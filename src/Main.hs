@@ -27,8 +27,8 @@ main = do
     AddCmd addOpts       -> withGratte opts $ addFiles (newFiles addOpts)
     ReindexCmd           -> withGratte opts reindex
     SearchCmd searchOpts -> withGratte opts $ searchDocs (query searchOpts)
-    Encrypt encOpts      -> withGratte opts $ encrypt encOpts
-    Encrypt encOpts      -> withGratte opts $ decrypt encOpts
+    Encrypt encOpts      -> withGratte opts $ encryptFiles encOpts
+    Decrypt encOpts      -> withGratte opts $ decryptFiles encOpts
 
 askForConfirmation :: Bool    -- ^ Is it the first time we ask the question ?
                    -> IO Bool

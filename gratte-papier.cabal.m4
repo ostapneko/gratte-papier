@@ -3,7 +3,10 @@ define(`COMMON_DEPS', `base
                      , MissingH
                      , aeson
                      , attoparsec
+                     , base16-bytestring
                      , bytestring
+                     , cipher-aes
+                     , DRBG
                      , either
                      , hslogger
                      , mtl
@@ -37,10 +40,11 @@ executable gratte-papier
   build-depends:     COMMON_DEPS
   default-language:  Haskell2010
 
-test-suite integration
+
+test-suite unit
   type:              exitcode-stdio-1.0
   main-is:           Suite.hs
-  hs-source-dirs:    tests/integration
+  hs-source-dirs:    tests/unit
                      , src
                      , tests/
 

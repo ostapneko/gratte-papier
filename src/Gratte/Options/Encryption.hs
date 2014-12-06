@@ -5,7 +5,6 @@ import qualified Filesystem.Path.CurrentOS as FS
 
 data EncryptionOptions = EncryptionOptions
   { encryptFolder :: FS.FilePath
-  , password      :: Maybe String
   } deriving Show
 
 parseEncryptionOptions :: Parser EncryptionOptions
@@ -15,9 +14,3 @@ parseEncryptionOptions = EncryptionOptions
                       <> short 'e'
                       <> metavar "DIR"
                       <> help "The folder where the encrypted file are")
-                     <*> option auto
-                       ( long "password"
-                      <> short 'p'
-                      <> metavar "PASSWORD"
-                      <> value Nothing
-                      <> help "Encryption password. It's recommended to pass the GRATTE_PASSWORD env var instead.")
