@@ -2,6 +2,7 @@
 
 module Gratte.Command.Encryption where
 
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Gratte
@@ -28,12 +29,11 @@ getPassword = do
       go s = if BS.length s >= 32 then BS.take 32 s else go (s <> s)
   return $ go pass
 
-sync :: FS.FilePath -- ^ Source folder
-     -> FS.FilePath -- ^ Target folder
-     -> (FS.FilePath -> FS.FilePath) -- ^ Basename transformation from the
-                                     -- source to the target
+sync :: FS.FilePath                           -- ^ Source folder
+     -> FS.FilePath                           -- ^ Target folder
+     -> (FS.FilePath -> FS.FilePath)          -- ^ Basename transformation from the source to the target
      -> (FS.FilePath -> FS.FilePath -> IO ()) -- ^ Transformation from source to target
-     -> IO (Int, Int) -- ^ (Number of synchronised files, total number of files)
+     -> IO (Int, Int)                         -- ^ (Number of synchronised files, total number of files)
 sync sourceDir targetDir nameTrans fileTrans = do
   -- /path/to/dir -> /path/to/dir/
   -- otherwise stripPrefix doesn't work as it should
@@ -41,16 +41,10 @@ sync sourceDir targetDir nameTrans fileTrans = do
   sourceFiles <- getFilesRecurs sourceDir'
   let sourcePaths = map (FS.stripPrefix sourceDir') sourceFiles
 
-  -- keep the files that either don't have a twin, or a twin that
-  -- is less recent
+  -- keep the files that don't have a twin
   toSync <- flip filterM (map fromJust sourcePaths) $ \p -> do
-    let sourceFile = sourceDir' </> p
-        targetFile = nameTrans $ targetDir </> p
-    existTarget <- FS.isFile targetFile
-    if existTarget
-      then
-        liftM2 (>) (FS.getModified sourceFile) (FS.getModified targetFile)
-      else return True
+    let targetFile = nameTrans $ targetDir </> p
+    not <$> FS.isFile targetFile
 
   let filePairs = map (\p ->
                         ( sourceDir' </> p
