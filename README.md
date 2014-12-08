@@ -35,6 +35,12 @@ Also, you would need to have `/var/gratte` and `var/log/gratte` folders with rea
 
 ## General Options
 
+WARNING: use those options for Elasticsearch if you don't want to expose its content to the local network!
+```
+discovery.zen.ping.multicast.enabled: false 
+node.local: true
+```
+
 Use `gratte-papier -h` to get all the common options, such as the log file, the Elasticsearch host/port, etc.
 
 ## Adding documents
