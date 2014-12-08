@@ -12,6 +12,7 @@ This is a very early release.
 To make Gratte-papier, you require
 - GHC 7.6.3
 - cabal > 1.18
+- m4
 - coffee script (for the UI)
 
 After everything is installed, simply go to the gratte-papier repo and run `make`
