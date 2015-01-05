@@ -62,4 +62,5 @@ You can then access the app at `localhost:3000`
 You can also query via the command line. For more detail, try `gratte-papier search --help`
 
 ## Saving documents
-In case you want to encrypt your Gratte folder file by file to (say) save it on Dropbox, you can use `gratte-papier encrypt -e /path/to/target/folder`. You can decrypt using `gratte-papier decrypt -e /path/to/target/folder`. In both cases, it will only synchronize the files that are not present in the target directory. The files are encrypted using CBC / AES 256.
+In case you want to encrypt your Gratte folder file by file to (say) save it on Dropbox, you can use `gratte-papier encrypt -e /path/to/encrypted/folder`. You can decrypt using `gratte-papier decrypt -e /path/to/encrypted/folder`. In both cases, it will only synchronize the files that are not present in the target directory. The files are encrypted using CBC / AES 256.
+Also, if you don't want to retype your password every time, you can write it to a file (remove the newline) and invoke the command like so: `gratte-papier --password-file /path/to/password-file [encrypt|decrypt] -e /path/to/encrypted/folder`
