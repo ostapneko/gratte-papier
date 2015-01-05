@@ -21,13 +21,17 @@ import qualified Filesystem.Path.CurrentOS as FS
 -- ^ Get a password from the input and transform it
 -- into a 16 bytes bytestring (if necessary
 -- by repeating and truncating the input)
-getPassword :: IO BS.ByteString
+getPassword :: Gratte BS.ByteString
 getPassword = do
-  putStrLn "Please enter your password"
-  strPass <- getLine
-  let pass = BS.pack strPass
-      go s = if BS.length s >= 32 then BS.take 32 s else go (s <> s)
-  return $ go pass
+  mPassFile <- getOption passwordFile
+  liftIO $ case mPassFile of
+    Nothing -> do
+      putStrLn "Please enter your password"
+      strPass <- getLine
+      let pass = BS.pack strPass
+          go s = if BS.length s >= 32 then BS.take 32 s else go (s <> s)
+      return $ go pass
+    Just passFile -> FS.readFile passFile
 
 sync :: FS.FilePath                           -- ^ Source folder
      -> FS.FilePath                           -- ^ Target folder
@@ -60,7 +64,7 @@ encryptFiles :: EncryptionOptions -> Gratte ()
 encryptFiles encOpts = do
   sourceDir <- getOption folder
   let targetDir = encryptFolder encOpts
-  password <- liftIO getPassword
+  password <- getPassword
   let nameTrans = (<.> "enc")
   (synced, total) <- liftIO $ sync sourceDir targetDir nameTrans (encryptFile password)
   logNotice $ show synced ++ "/" ++ show total ++ " files encrypted"
@@ -69,7 +73,7 @@ decryptFiles :: EncryptionOptions -> Gratte ()
 decryptFiles encOpts = do
   let sourceDir = encryptFolder encOpts
   targetDir <- getOption folder
-  password <- liftIO getPassword
+  password <- getPassword
   opts <- getOptions
   let logFailure s = withGratte opts $ logError $ "Error while decrypting " ++ FS.encodeString s
   let write s t = do

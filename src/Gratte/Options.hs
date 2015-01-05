@@ -43,31 +43,33 @@ data Command = AddCmd      AddOptions
              deriving Show
 
 data Options = Options
-  { verbosity   :: Verbosity
-  , esHost      :: EsHost
-  , esIndex     :: EsIndex
-  , folder      :: FS.FilePath
-  , logFilePath :: FS.FilePath
-  , optCommand  :: Command
+  { verbosity    :: Verbosity
+  , esHost       :: EsHost
+  , esIndex      :: EsIndex
+  , folder       :: FS.FilePath
+  , logFilePath  :: FS.FilePath
+  , passwordFile :: Maybe FS.FilePath
+  , optCommand   :: Command
   } deriving Show
 
 defaultEsHost :: EsHost
 defaultEsHost = EsHost URI
-  { uriScheme = "http:"
+  { uriScheme    = "http:"
   , uriAuthority = Just $ URIAuth "" "localhost" ":9200"
-  , uriPath = ""
-  , uriQuery = ""
-  , uriFragment = ""
+  , uriPath      = ""
+  , uriQuery     = ""
+  , uriFragment  = ""
   }
 
 defaultOptions :: Options
 defaultOptions = Options
-  { verbosity = VerbosityNormal
-  , esHost = defaultEsHost
-  , esIndex = EsIndex "gratte"
-  , folder = FS.decodeString "/var/gratte"
-  , logFilePath = FS.decodeString "/var/log/gratte/gratte.log"
-  , optCommand = error "Command not set in the options"
+  { verbosity    = VerbosityNormal
+  , esHost       = defaultEsHost
+  , esIndex      = EsIndex "gratte"
+  , folder       = FS.decodeString "/var/gratte"
+  , logFilePath  = FS.decodeString "/var/log/gratte/gratte.log"
+  , passwordFile = Nothing
+  , optCommand   = error "Command not set in the options"
   }
 
 parseOptions :: Parser Options
@@ -98,6 +100,12 @@ parseOptions = Options
               <> metavar "PATH"
               <> value (logFilePath defaultOptions)
               <> help "The log file")
+           <*> option (Just . FS.decodeString <$> str)
+               ( long "password-file"
+              <> short 'p'
+              <> metavar "PATH"
+              <> value Nothing
+              <> help "The password file for encrypting and decrypting")
            <*> subparser
                  ( command "add"     addParserInfo
                 <> command "search"  searchParserInfo
