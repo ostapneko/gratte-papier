@@ -36,7 +36,8 @@ extractText file = do
         (Just "pdf", PDFModeImage, True )  -> extractPDFImage tempDir filePath
         (Just "pdf", PDFModeImage, False ) -> return Nothing
         (Just "pdf", PDFModeText , _    )  -> extractPDFText tempDir filePath
-        (_          , _          , _ )     -> return Nothing
+        (_          , _          , True )  -> extractImage tempDir filePath
+        (_          , _          , False ) -> return Nothing
 
 extractImage :: TextExtractor
 extractImage tempDir file = do
