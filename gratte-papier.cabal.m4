@@ -11,6 +11,7 @@ define(`COMMON_DEPS', `base
                      , hslogger
                      , mtl
                      , network
+                     , network-uri
                      , old-time
                      , optparse-applicative
                      , process
