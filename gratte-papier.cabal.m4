@@ -17,11 +17,13 @@ define(`COMMON_DEPS', `base
                      , process
                      , scotty
                      , split
+                     , snowball
                      , system-fileio
                      , system-filepath
                      , template-haskell
                      , temporary
                      , text
+                     , tokenize
                      , unix
                      , vector
                      , wai-middleware-static')dnl

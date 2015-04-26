@@ -4,7 +4,7 @@ import Control.Monad
 import Data.Aeson
 import qualified Data.Text as T
 
-newtype Tag = Tag String deriving (Show, Eq, Read)
+newtype Tag = Tag { unTag :: String } deriving (Show, Eq, Read)
 
 instance ToJSON Tag where
   toJSON (Tag t) = toJSON $ T.pack t

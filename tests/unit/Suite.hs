@@ -1,4 +1,7 @@
 import Gratte.Command.EncryptionSpec
+import Gratte.SearchEngineSpec
 
 main :: IO ()
-main = encryptionSpec
+main = do
+  encryptionSpec
+  tokenizeSpec
