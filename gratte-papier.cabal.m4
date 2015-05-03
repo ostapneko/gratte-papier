@@ -6,6 +6,7 @@ define(`COMMON_DEPS', `base
                      , base16-bytestring
                      , bytestring
                      , cipher-aes
+                     , containers
                      , DRBG
                      , either
                      , hslogger
