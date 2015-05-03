@@ -8,41 +8,47 @@ import qualified Data.Set as S
 import Gratte.Tag
 import Gratte.SearchEngine
 import Gratte.Document
+import qualified Data.Text as T
+
+docWithText :: T.Text -> Document
+docWithText t = emptyDoc { docScannedText = Just t }
+
+emptyDoc :: Document
+emptyDoc = Document
+          { docHash        = DocumentHash ""
+          , docTitle       = DocumentTitle ""
+          , docPath        = DocumentPath ""
+          , docSender      = DocumentSender ""
+          , docRecipient   = DocumentRecipient ""
+          , docDate        = DocumentDate Nothing 2015
+          , docTags        = [Tag ""]
+          , docScannedText = Just ""
+          }
 
 tokenizeSpec :: IO ()
 tokenizeSpec = do
-  let emptyDoc = Document {
-    docHash        = DocumentHash ""
-  , docTitle       = DocumentTitle ""
-  , docPath        = DocumentPath ""
-  , docSender      = DocumentSender ""
-  , docRecipient   = DocumentRecipient ""
-  , docDate        = DocumentDate Nothing 2015
-  , docTags        = [Tag ""]
-  , docScannedText = Just ""
-  }
-
-      fullDoc = emptyDoc {
-        docTitle = DocumentTitle "Title"
-      , docSender = DocumentSender "Sender"
-      , docRecipient = DocumentRecipient "Recipient"
-      , docTags = [Tag "Tag"]
-      , docScannedText = Just "ScannedText"
-      }
+  let fullDoc = emptyDoc
+              { docTitle       = DocumentTitle "Title"
+              , docSender      = DocumentSender "Sender"
+              , docRecipient   = DocumentRecipient "Recipient"
+              , docTags        = [Tag "Tag"]
+              , docScannedText = Just "ScannedText"
+              }
 
       fullTokenized = S.fromList ["Title", "Sender", "Recipient", "Tag", "ScannedText"]
 
+
   hspec $ do
-    describe "tokenize" $
-      it "tokenizes a string" $
+    describe "tokenize" $ do
+      it "returns an empty set for an empty document" $
         tokenize emptyDoc `shouldBe` S.empty
-    describe "with all fields" $
-      it "should tokenize all fields" $
-        tokenize fullDoc `shouldBe` fullTokenized
-    describe "whitespace separation" $
-      it "should split on whitespaces" $
-        tokenize (emptyDoc { docScannedText = Just "Test doc" }) `shouldBe` S.fromList ["Test", "doc"]
-    describe "remove punctuation" $
-      it "should remove all punctuation" $
-        tokenize (emptyDoc { docScannedText = Just "Test: doc" }) `shouldBe` S.fromList ["Test", "doc"]
+      describe "with all fields" $
+        it "tokenizes all fields" $
+          tokenize fullDoc `shouldBe` fullTokenized
+      it "splits on whitespaces" $
+        tokenize (docWithText "Test doc") `shouldBe` S.fromList ["Test", "doc"]
+      it "removes all punctuation" $
+        tokenize (docWithText "Test: doc") `shouldBe` S.fromList ["Test", "doc"]
+      it "preserves URIs" $
+        tokenize (docWithText "www.example.com/example doc") `shouldBe` S.fromList ["www.example.com/example", "doc"]
 
