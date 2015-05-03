@@ -5,3 +5,4 @@ main :: IO ()
 main = do
   encryptionSpec
   tokenizeSpec
+  stemSpec

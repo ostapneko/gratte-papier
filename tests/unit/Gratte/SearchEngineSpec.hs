@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Gratte.SearchEngineSpec
   ( tokenizeSpec
+  , stemSpec
   ) where
 
 import Test.Hspec
@@ -52,3 +53,11 @@ tokenizeSpec = do
       it "preserves URIs" $
         tokenize (docWithText "www.example.com/example doc") `shouldBe` S.fromList ["www.example.com/example", "doc"]
 
+stemSpec :: IO ()
+stemSpec = do
+  let texts = S.fromList ["politics", "Political"]
+
+  hspec $
+    describe "stem" $
+      it "reduces terms to their stems" $
+        stem texts `shouldBe` S.singleton "polit"
