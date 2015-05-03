@@ -9,11 +9,12 @@ This is a very early release.
 # Installation
 
 ## Manual
-To make Gratte-papier, you require
+To make Gratte-papier, you need
 - GHC 7.6.3
 - cabal > 1.18
 - m4
 - coffee script (for the UI)
+- libraries for ICU (libicu-dev for Ubuntu)
 
 After everything is installed, simply go to the gratte-papier repo and run `make`
 
